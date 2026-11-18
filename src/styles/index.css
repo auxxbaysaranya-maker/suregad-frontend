@@ -1,0 +1,209 @@
+@import "tailwindcss";
+
+/*
+  SureGad theme — colours sampled from the logo:
+  azure #0548d4 → indigo → violet #6627bc → orchid #c065e6, on a lavender ground.
+*/
+@theme static {
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-display: "Outfit", "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  --color-ink: #0e0f2c;
+  --color-ink-soft: #2a2b4d;
+  --color-muted: #5d5b78;
+  --color-line: #e8e5f4;
+  --color-canvas: #f7f6fc;
+
+  --color-brand: #3a3fe0;
+  --color-brand-50: #f3f2ff;
+  --color-brand-100: #e8e5ff;
+  --color-brand-200: #d4cdfe;
+  --color-brand-300: #b3a4fb;
+  --color-brand-400: #8a76f4;
+  --color-brand-500: #5d55ea;
+  --color-brand-600: #3a3fe0;
+  --color-brand-700: #2d30bd;
+  --color-brand-800: #252894;
+  --color-brand-900: #1c1e62;
+  --color-brand-950: #101137;
+
+  --color-azure: #0a52e3;
+  --color-violet: #6a2fd0;
+  --color-orchid: #c065e6;
+  --color-lavender: #ebe4fb;
+
+  --color-accent: #6a2fd0;
+  --color-success: #0f9f5c;
+  --color-warning: #e79a12;
+  --color-danger: #e0434d;
+
+  --shadow-card: 0 1px 2px rgb(16 17 55 / 0.04), 0 8px 24px -12px rgb(16 17 55 / 0.12);
+  --shadow-lift: 0 2px 4px rgb(16 17 55 / 0.04), 0 24px 48px -16px rgb(58 63 224 / 0.32);
+  --shadow-glow: 0 10px 30px -8px rgb(58 63 224 / 0.55);
+
+  --animate-marquee: marquee var(--marquee-duration, 40s) linear infinite;
+  --animate-marquee-reverse: marquee-reverse var(--marquee-duration, 40s) linear infinite;
+  --animate-float: float 6s ease-in-out infinite;
+  --animate-orbit: orbit 18s linear infinite;
+  --animate-aurora: aurora 16s ease-in-out infinite alternate;
+  --animate-shimmer: shimmer 2.2s linear infinite;
+  --animate-pulse-ring: pulse-ring 2.4s cubic-bezier(0.2, 0.7, 0.3, 1) infinite;
+  --animate-bump: bump 0.45s cubic-bezier(0.3, 1.6, 0.5, 1);
+  --animate-progress: progress var(--progress-duration, 6s) linear forwards;
+
+}
+
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+@keyframes marquee-reverse {
+  from { transform: translateX(-50%); }
+  to { transform: translateX(0); }
+}
+@keyframes float {
+  0%, 100% { transform: translateY(0) rotate(var(--float-rotate, 0deg)); }
+  50% { transform: translateY(-12px) rotate(var(--float-rotate, 0deg)); }
+}
+@keyframes orbit {
+  to { transform: rotate(360deg); }
+}
+@keyframes aurora {
+  0% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(6%, -8%, 0) scale(1.12); }
+  100% { transform: translate3d(-6%, 6%, 0) scale(0.95); }
+}
+@keyframes shimmer {
+  from { background-position: -200% 0; }
+  to { background-position: 200% 0; }
+}
+@keyframes pulse-ring {
+  0% { transform: scale(0.85); opacity: 0.7; }
+  100% { transform: scale(1.9); opacity: 0; }
+}
+@keyframes bump {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.35); }
+  100% { transform: scale(1); }
+}
+@keyframes progress {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fade-out { from { opacity: 1; } to { opacity: 0; } }
+@keyframes sheet-in { from { transform: translateY(100%); } to { transform: translateY(0); } }
+@keyframes sheet-out { from { transform: translateY(0); } to { transform: translateY(100%); } }
+@keyframes pop-in { from { opacity: 0; transform: translateY(14px) scale(0.96); } to { opacity: 1; transform: none; } }
+@keyframes pop-out { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(10px) scale(0.97); } }
+@keyframes typing-dot { 0%, 60%, 100% { transform: translateY(0); opacity: 0.45; } 30% { transform: translateY(-4px); opacity: 1; } }
+
+@utility bg-brand-gradient {
+  background-image: linear-gradient(115deg, var(--color-azure) 0%, var(--color-brand-600) 45%, var(--color-violet) 78%, var(--color-orchid) 100%);
+}
+
+@utility text-gradient {
+  background-image: linear-gradient(100deg, var(--color-azure) 0%, var(--color-brand-600) 40%, var(--color-violet) 75%, var(--color-orchid) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* A 1px gradient border on any rounded element. */
+@utility border-gradient {
+  border: 1px solid transparent;
+  background:
+    linear-gradient(var(--border-gradient-fill, #fff), var(--border-gradient-fill, #fff)) padding-box,
+    linear-gradient(120deg, var(--color-azure), var(--color-violet), var(--color-orchid)) border-box;
+}
+
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@utility skeleton {
+  background: linear-gradient(90deg, #eeecf7 0%, #f8f7fd 50%, #eeecf7 100%);
+  background-size: 200% 100%;
+  animation: var(--animate-shimmer);
+}
+
+@utility grid-pattern {
+  background-image:
+    linear-gradient(to right, rgb(255 255 255 / 0.07) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(255 255 255 / 0.07) 1px, transparent 1px);
+  background-size: 44px 44px;
+}
+
+@utility mask-fade-x {
+  mask-image: linear-gradient(to right, transparent, #000 6%, #000 94%, transparent);
+}
+
+/* Base styles live in the base layer so Tailwind utilities can override them. */
+@layer base {
+  html {
+    overflow-x: clip;
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--color-canvas);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: "cv11", "ss01";
+    overflow-x: clip;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    line-height: 1.08;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+    letter-spacing: inherit;
+  }
+
+  button {
+    cursor: pointer;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-brand-500);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background: var(--color-brand-200);
+    color: var(--color-ink);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
