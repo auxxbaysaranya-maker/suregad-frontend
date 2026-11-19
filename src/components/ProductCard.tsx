@@ -25,7 +25,7 @@ export interface Listing {
   state?: string;
   sellerType: string;
   sellerUserId?: string;
-  images?: { url?: string }[];
+  images?: { key?: string; url?: string }[];
   specs?: Record<string, string | number | boolean | { available?: boolean }>;
   inspection?: { inspected?: boolean; score?: number; critical?: boolean; reportId?: string };
   status?: string;

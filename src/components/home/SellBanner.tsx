@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowRight, Camera, MessagesSquare, Store } from "lucide-react";
 import { Mark, OrbitRing } from "../brand";
+import { adminUrl } from "../../lib/config";
 
 // Chips sit above and below the central tile (which spans roughly y 78–222 of the 300px stage) so they never cover it.
 const chips = [
@@ -27,9 +28,9 @@ export function SellBanner() {
             <Link to="/become-a-seller" className="group inline-flex items-center gap-2 rounded-full bg-white px-6 py-3.5 text-[15px] font-semibold text-ink shadow-[0_14px_30px_-10px_rgba(0,0,0,0.4)] transition hover:-translate-y-0.5">
               Start selling <ArrowRight size={17} className="transition-transform group-hover:translate-x-1" />
             </Link>
-            <Link to="/showroom/signup" className="inline-flex items-center rounded-full px-6 py-3.5 text-[15px] font-semibold ring-1 ring-white/40 backdrop-blur transition hover:bg-white/10">
+            <a href={adminUrl("signup?as=seller")} className="inline-flex items-center rounded-full px-6 py-3.5 text-[15px] font-semibold ring-1 ring-white/40 backdrop-blur transition hover:bg-white/10">
               Register a showroom
-            </Link>
+            </a>
           </div>
         </div>
         <div className="relative mx-auto h-[300px] w-full max-w-[420px]">

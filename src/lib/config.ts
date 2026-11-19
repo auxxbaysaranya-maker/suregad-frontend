@@ -19,3 +19,12 @@ export function appUrl(path = window.location.pathname): string {
   const relative = path.startsWith(BASE_PATH) ? path : `${BASE_PATH}${path.replace(/^\/+/, "")}`;
   return new URL(relative, window.location.origin).toString();
 }
+
+/** The SureGad Hub (seller, partner and admin panels) — a separate app. */
+const defaultAdmin = import.meta.env.DEV ? "http://localhost:5174/" : "https://auxxbaysaranya-maker.github.io/suregad-admin-panel/";
+export const ADMIN_URL = (import.meta.env.VITE_ADMIN_URL || defaultAdmin).replace(/\/?$/, "/");
+
+/** Absolute link into the admin panel, e.g. adminUrl("signup?as=partner"). */
+export function adminUrl(path = ""): string {
+  return `${ADMIN_URL}${path.replace(/^\/+/, "")}`;
+}

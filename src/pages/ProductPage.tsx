@@ -1,9 +1,9 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation as useRouterLocation, useNavigate, useParams } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
 import {
   ArrowRight,
+  ImagePlus,
   BadgeCheck,
   SendHorizontal,
   Bell,
@@ -29,11 +29,13 @@ import { settlePayment } from "../lib/payments";
 import { Button, Empty, ErrorNote, Field } from "../components/ui";
 import { ProductCard, specChips, useDistance, type Listing } from "../components/ProductCard";
 import { Scroller } from "../components/Scroller";
-import { DeviceFallback } from "../components/illustrations";
 import { ListingMap } from "../components/ListingMap";
 import { InspectionModal } from "../components/InspectionModal";
 import { CallDialog, useStartChat } from "../components/contact";
 import { ShareButton } from "../components/share";
+import { ProductGallery } from "../components/ProductGallery";
+import { PhotoUploader, photosFromListing, readyKeys, type Photo } from "../components/PhotoUploader";
+import { Modal } from "../components/Modal";
 import { BackButton } from "../components/navigation";
 import { useSession } from "../store/session";
 
@@ -50,35 +52,49 @@ interface ProductPayload {
 
 const QUICK_QUESTIONS = ["Is it still available?", "Is the price negotiable?", "Can I see it today?", "Any repairs or scratches?"];
 
-function Gallery({ item }: { item: ProductPayload["product"] }) {
-  const images = (item.images || []).filter((image) => image.url);
-  const [index, setIndex] = useState(0);
-  const current = images[index]?.url;
+/** Lets the seller add, remove and reorder photos on their own listing. */
+function ManagePhotos({ product, open, onOpenChange }: { product: Listing & { images?: { key?: string; url?: string }[] }; open: boolean; onOpenChange: (open: boolean) => void }) {
+  const client = useQueryClient();
+  const [photos, setPhotos] = useState<Photo[]>(() => photosFromListing(product.images));
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  useEffect(() => {
+    if (open) {
+      setPhotos(photosFromListing(product.images));
+      setError("");
+    }
+  }, [open, product.images]);
+  const uploading = photos.some((photo) => photo.status === "uploading");
+  async function save() {
+    const keys = readyKeys(photos);
+    if (!keys.length) {
+      setError("Keep at least one photo.");
+      return;
+    }
+    setSaving(true);
+    setError("");
+    try {
+      await api.put(`/products/${product.id}/images`, { imageKeys: keys });
+      await client.invalidateQueries({ queryKey: ["product", product.slug] });
+      onOpenChange(false);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Could not save photos.");
+    } finally {
+      setSaving(false);
+    }
+  }
   return (
-    <div>
-      <div className="relative grid aspect-[4/3.2] place-items-center overflow-hidden rounded-[30px] bg-[radial-gradient(120%_90%_at_30%_15%,#ffffff_0%,#f3f1ff_45%,#e5ddff_100%)] ring-1 ring-line">
-        <AnimatePresence mode="wait">
-          {current ? (
-            <motion.img key={current} src={current} alt={item.title} initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }} className="absolute inset-0 m-auto h-[86%] w-[86%] object-contain" />
-          ) : (
-            <motion.div key="fallback" className="grid h-full w-full place-items-center">
-              <DeviceFallback laptop={item.categorySlug === "laptops"} className="max-h-[70%]" />
-            </motion.div>
-          )}
-        </AnimatePresence>
-        <span className="absolute top-4 left-4 rounded-full bg-ink/80 px-3 py-1 text-[12px] font-semibold text-white backdrop-blur">{item.sellerType === "business" ? "Refurbished" : "Used"}</span>
-        {images.length > 1 ? <span className="absolute right-4 bottom-4 rounded-full bg-white/90 px-3 py-1 text-[12px] font-semibold text-ink shadow-card">{index + 1} / {images.length}</span> : null}
+    <Modal open={open} onOpenChange={onOpenChange} title="Manage photos" description="Add, remove or reorder photos. The first photo is the cover." size="lg">
+      <PhotoUploader photos={photos} setPhotos={setPhotos} max={20} />
+      {product.status === "active" ? <p className="mt-3 rounded-2xl bg-amber-50 px-4 py-2.5 text-[13px] text-amber-800 ring-1 ring-amber-200">Changing photos sends the listing back for a quick review before it shows again.</p> : null}
+      {error ? <p className="mt-3 text-[13px] text-danger">{error}</p> : null}
+      <div className="mt-5 grid grid-cols-2 gap-2">
+        <button type="button" onClick={() => onOpenChange(false)} className="rounded-full bg-white py-3 font-semibold ring-1 ring-line">Cancel</button>
+        <button type="button" disabled={uploading || saving} onClick={() => void save()} className="flex items-center justify-center gap-2 rounded-full bg-brand-gradient py-3 font-semibold text-white shadow-glow disabled:opacity-60">
+          {saving ? <Loader2 size={16} className="animate-spin" /> : null} {uploading ? "Uploading…" : "Save photos"}
+        </button>
       </div>
-      {images.length > 1 ? (
-        <div className="no-scrollbar mt-3 flex gap-2 overflow-x-auto">
-          {images.map((image, imageIndex) => (
-            <button key={image.url} type="button" onClick={() => setIndex(imageIndex)} aria-label={`Photo ${imageIndex + 1}`} className={cn("grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-2xl bg-brand-50 ring-2 transition", imageIndex === index ? "ring-brand-500" : "ring-transparent hover:ring-brand-200")}>
-              <img src={image.url} alt="" className="h-[85%] w-[85%] object-contain" />
-            </button>
-          ))}
-        </div>
-      ) : null}
-    </div>
+    </Modal>
   );
 }
 
@@ -173,6 +189,7 @@ export function ProductPage() {
   const chat = useStartChat();
   const [callOpen, setCallOpen] = useState(false);
   const [inspectOpen, setInspectOpen] = useState(false);
+  const [photosOpen, setPhotosOpen] = useState(false);
   const [cartState, setCartState] = useState<"idle" | "busy" | "done">("idle");
   const [cartError, setCartError] = useState<unknown>(null);
   const product = useQuery({
@@ -239,7 +256,12 @@ export function ProductPage() {
       {/* grid-cols-1 = minmax(0,1fr): keeps the single phone column exactly screen-wide */}
       <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] lg:gap-10">
         <div className="order-1 min-w-0 lg:col-start-1 lg:row-start-1">
-          <Gallery item={item} />
+          <ProductGallery
+            images={item.images || []}
+            title={item.title}
+            laptop={item.categorySlug === "laptops"}
+            badge={<span className="rounded-full bg-ink/80 px-3 py-1 text-[12px] font-semibold text-white backdrop-blur">{item.sellerType === "business" ? "Refurbished" : "Used"}</span>}
+          />
         </div>
 
         <div className="order-3 min-w-0 space-y-8 lg:col-start-1 lg:row-start-2">
@@ -314,6 +336,9 @@ export function ProductPage() {
             {ownListing ? (
               <div className="mt-5 rounded-2xl bg-brand-50 p-4 text-[14px] text-brand-800 ring-1 ring-brand-100">
                 This is your listing. Buyer messages arrive in <Link to="/chat?box=selling" className="font-semibold underline">your chats</Link>.
+                <button type="button" onClick={() => setPhotosOpen(true)} className="mt-3 flex w-full items-center justify-center gap-2 rounded-full bg-white py-2.5 text-[14px] font-semibold text-ink ring-1 ring-brand-200 transition hover:ring-brand-400">
+                  <ImagePlus size={16} /> Manage photos ({(item.images || []).length})
+                </button>
               </div>
             ) : (
               <div className="mt-6 rounded-[24px] bg-canvas p-2 ring-1 ring-line">
@@ -460,6 +485,7 @@ export function ProductPage() {
         </div>
       ) : null}
 
+      {ownListing ? <ManagePhotos product={item} open={photosOpen} onOpenChange={setPhotosOpen} /> : null}
       <CallDialog open={callOpen} onOpenChange={setCallOpen} productId={item.id} sellerName={sellerName} />
       <InspectionModal open={inspectOpen} onOpenChange={setInspectOpen} product={{ id: item.id, title: item.title, categorySlug: item.categorySlug, city: item.city }} />
     </div>

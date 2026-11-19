@@ -29,6 +29,7 @@ import { cn } from "../lib/utils";
 import { Logo, Mark } from "./brand";
 import { LocationChip } from "./LocationPicker";
 import { BackButton } from "./navigation";
+import { adminUrl } from "../lib/config";
 
 const buyerTabs = [
   ["/", Home, "Home"],
@@ -91,7 +92,7 @@ function AnnouncementBar() {
         </div>
         <div className="hidden items-center gap-4 text-white/85 md:flex">
           <Link to="/become-a-partner" className="hover:text-white">Become a partner</Link>
-          <Link to="/showroom/login" className="hover:text-white">Showroom login</Link>
+          <a href={adminUrl("login")} className="hover:text-white">Seller & partner hub</a>
         </div>
       </div>
     </div>
@@ -278,8 +279,8 @@ export function SiteFooter() {
   const columns = [
     ["Shop", [["/search?category=smartphones", "Mobiles"], ["/search?category=laptops", "Laptops"], ["/search?inspected=true", "Inspected devices"], ["/search?sellerType=business", "Refurbished"]]],
     ["Help", [["/account/support", "Contact support"], ["/how-it-works", "How inspection works"], ["/account/orders", "Your orders"]]],
-    ["Sell", [["/become-a-seller", "Start selling"], ["/showroom/login", "Showroom login"], ["/showroom/signup", "Register a showroom"]]],
-    ["Partners", [["/become-a-partner", "Become a partner"], ["/partner/login", "Partner panel"]]],
+    ["Sell", [["/become-a-seller", "Start selling"], [adminUrl("login"), "Seller sign in"], [adminUrl("signup?as=seller"), "Register a showroom"]]],
+    ["Partners", [["/become-a-partner", "Become a partner"], [adminUrl("login"), "Partner sign in"]]],
   ] as const;
   return (
     <footer className="relative mt-16 hidden overflow-hidden rounded-t-[36px] bg-ink text-white/70 lg:block">
@@ -305,9 +306,13 @@ export function SiteFooter() {
           {columns.map(([title, links]) => (
             <div key={title} className="space-y-2.5 text-sm">
               <p className="mb-3 font-display text-[15px] font-semibold text-white">{title}</p>
-              {links.map(([to, label]) => (
-                <Link key={label} className="block transition hover:translate-x-0.5 hover:text-white" to={to}>{label}</Link>
-              ))}
+              {links.map(([to, label]) =>
+                to.startsWith("http") ? (
+                  <a key={label} className="block transition hover:translate-x-0.5 hover:text-white" href={to}>{label}</a>
+                ) : (
+                  <Link key={label} className="block transition hover:translate-x-0.5 hover:text-white" to={to}>{label}</Link>
+                ),
+              )}
             </div>
           ))}
         </div>
@@ -372,44 +377,6 @@ export function PublicShell({ children, hideTabs = false, hideBack = false }: { 
       </main>
       <SiteFooter />
       {hideTabs ? null : <MobileTabs />}
-    </div>
-  );
-}
-
-export function PanelShell({ title, links, children }: { title: string; links: { to: string; label: string }[]; children: React.ReactNode }) {
-  const logout = useSession((state) => state.logout);
-  const navigate = useNavigate();
-  const loginTo = title === "Super admin" ? "/admin/login" : title === "Partner" ? "/partner/login" : "/showroom/login";
-  return (
-    <div className="min-h-screen bg-canvas md:grid md:grid-cols-[248px_1fr]">
-      <aside className="bg-ink text-white/70 md:min-h-screen">
-        <div className="flex items-center gap-2.5 px-5 py-6">
-          <Mark className="h-9 w-9" />
-          <div>
-            <p className="font-display text-[15px] font-bold text-white">SureGad</p>
-            <p className="text-xs text-brand-200">{title}</p>
-          </div>
-        </div>
-        <nav className="space-y-1 px-3">
-          {links.map((link) => (
-            <NavLink key={link.to} to={link.to} end className={({ isActive }) => `block rounded-xl px-3 py-2 text-sm font-medium transition ${isActive ? "bg-white text-ink" : "hover:bg-white/10 hover:text-white"}`}>
-              {link.label}
-            </NavLink>
-          ))}
-        </nav>
-        <button
-          className="m-3 rounded-xl px-3 py-2 text-sm text-white/50 hover:bg-white/10 hover:text-white"
-          onClick={() => {
-            void logout().then(() => navigate(loginTo));
-          }}
-        >
-          Sign out
-        </button>
-      </aside>
-      <div className="px-4 py-6 md:px-8">
-        <BackButton className="mb-5" />
-        {children}
-      </div>
     </div>
   );
 }
