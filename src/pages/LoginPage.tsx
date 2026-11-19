@@ -15,6 +15,7 @@ export function LoginPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [devPassword, setDevPassword] = useState("");
   const [phone, setPhone] = useState("+91");
   const [code, setCode] = useState("");
   const [confirmation, setConfirmation] = useState<ConfirmationResult | null>(null);
@@ -62,10 +63,14 @@ export function LoginPage() {
           <p className="text-sm text-slate-500">This endpoint is disabled when NODE_ENV is production. It does not replace Firebase.</p>
           <Field label="Name"><Input value={name} onChange={(event) => setName(event.target.value)} /></Field>
           <Field label="Email"><Input value={email} onChange={(event) => setEmail(event.target.value)} /></Field>
+          <Field label="Password (for accounts that have one, e.g. demo accounts)"><Input type="password" autoComplete="current-password" value={devPassword} onChange={(event) => setDevPassword(event.target.value)} /></Field>
           <Button
             variant="secondary"
             onClick={() =>
-              api.post("/auth/dev-login", { name, email: email || undefined }).then((response) => establish(response.data.data.token)).catch(setError)
+              (devPassword
+                ? api.post("/auth/password-login", { email, password: devPassword })
+                : api.post("/auth/dev-login", { name, email: email || undefined })
+              ).then((response) => establish(response.data.data.token)).catch(setError)
             }
           >
             Continue locally
