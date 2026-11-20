@@ -1,3 +1,4 @@
+import { toast } from "./Toaster";
 import { useState } from "react";
 import { Check, Facebook, Link2, Linkedin, Mail, Send, Share2, Twitter } from "lucide-react";
 import { Modal } from "./Modal";
@@ -45,7 +46,7 @@ export function ShareDialog({ open, onOpenChange, title, text, url }: { open: bo
         <span className="min-w-0 flex-1 truncate text-[13px] text-ink-soft">{link}</span>
         <button
           type="button"
-          onClick={() => void navigator.clipboard?.writeText(link).then(() => setCopied(true))}
+          onClick={() => void navigator.clipboard?.writeText(link).then(() => { setCopied(true); toast.success("Link copied", "Share it anywhere."); })}
           className={cn("flex shrink-0 items-center gap-1.5 rounded-full px-4 py-2 text-[13px] font-semibold transition", copied ? "bg-success text-white" : "bg-ink text-white hover:bg-brand-700")}
         >
           {copied ? <Check size={14} /> : null} {copied ? "Copied" : "Copy link"}

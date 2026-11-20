@@ -1,7 +1,7 @@
 /**
  * Deployment settings, read at build time.
  *
- * VITE_BASE_PATH — where the site is served from ("/" locally, "/suregad-frontend/" on GitHub Pages).
+ * VITE_BASE_PATH — where the site is served from ("/" locally and on suregad.in).
  * VITE_API_URL   — origin of the SureGad API, e.g. https://api.suregad.com. Leave empty when the API is
  *                  served from the same origin (local dev uses the Vite proxy).
  */
@@ -21,7 +21,7 @@ export function appUrl(path = window.location.pathname): string {
 }
 
 /** The SureGad Hub (seller, partner and admin panels) — a separate app. */
-const defaultAdmin = import.meta.env.DEV ? "http://localhost:5174/" : "https://auxxbaysaranya-maker.github.io/suregad-admin-panel/";
+const defaultAdmin = import.meta.env.DEV ? "http://localhost:5174/" : "https://dashboard.suregad.in/";
 export const ADMIN_URL = (import.meta.env.VITE_ADMIN_URL || defaultAdmin).replace(/\/?$/, "/");
 
 /** Absolute link into the admin panel, e.g. adminUrl("signup?as=partner"). */

@@ -39,13 +39,15 @@ export default defineConfig(({ mode }) => {
     react(),
     tailwindcss(),
     VitePWA({
-      registerType: "autoUpdate",
+      // "prompt": a new deploy shows "Update available" with an Update button.
+      registerType: "prompt",
       injectRegister: false,
       includeAssets: ["brand/favicon-64.png", "brand/apple-touch-icon.png", "brand/logo.png", "brand/mark.png"],
       manifest: {
+        id: base,
         name: "SureGad",
         short_name: "SureGad",
-        description: "Buy smart. Buy verified.",
+        description: "Buy and sell verified used and refurbished phones and laptops.",
         theme_color: "#3a3fe0",
         background_color: "#f7f6fc",
         display: "standalone",
@@ -57,14 +59,18 @@ export default defineConfig(({ mode }) => {
           { src: "brand/icon-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
         ],
       },
-      devOptions: { enabled: true },
+      devOptions: { enabled: false },
       workbox: {
         importScripts: [`${base}push-handler.js`],
         navigateFallback: `${base}index.html`,
-        navigateFallbackDenylist: [/\/api\//, /\/(account|sell|business|partner|admin)(\/|$)/],
+        navigateFallbackDenylist: [/\/api\//],
+        cleanupOutdatedCaches: true,
+        // Take control on first install so later updates can reload the page; updates still wait for "Update now".
+        clientsClaim: true,
+        maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
         runtimeCaching: [
           {
-            urlPattern: ({ url }) => url.pathname.startsWith("/api/"),
+            urlPattern: ({ url }) => url.pathname.startsWith("/api/") || url.pathname.startsWith("/socket.io"),
             handler: "NetworkOnly",
           },
         ],

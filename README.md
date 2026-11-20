@@ -39,8 +39,13 @@ All of these end up in public JavaScript. Never put server secrets in them.
 One-time setup in the repository on GitHub:
 
 1. **Settings → Pages → Build and deployment → Source:** choose **GitHub Actions**.
-2. **Settings → Secrets and variables → Actions → Variables:** add `VITE_API_URL` (and the Firebase variables if you use sign-in or push).
+2. **Settings → Pages → Custom domain:** `suregad.in` (the workflow also writes `CNAME`).
+3. Optional **Settings → Secrets and variables → Actions → Variables:** `VITE_API_URL` (default `https://suregad-backend-1b10e3df.appliedintelligencecorporation.com`) and the Firebase variables.
 
-The site is then served at `https://<user>.github.io/<repo-name>/`.
+The site is served from the domain root, so the build uses `VITE_BASE_PATH=/`. If you ever publish at `https://<user>.github.io/<repo-name>/` again, set the `VITE_BASE_PATH` variable to `/<repo-name>/`, otherwise the page loads blank.
+
+### Installable app (PWA)
+
+The site is an installable PWA. Android and desktop Chrome/Edge show an **Install** prompt; iPhone/iPad users get Add to Home Screen steps. After each deploy, open apps see **Update available → Update now**.
 
 GitHub Pages only hosts static files. The marketplace needs the SureGad API running somewhere reachable over HTTPS, and that API must allow the Pages origin in its `CLIENT_ORIGIN` setting (CORS). Without it, pages load but listings, sign-in and chat cannot work.

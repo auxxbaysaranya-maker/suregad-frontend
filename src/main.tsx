@@ -1,5 +1,7 @@
 import { StrictMode, useEffect } from "react";
 import { createRoot } from "react-dom/client";
+import { Toaster } from "./components/Toaster";
+import { PwaPrompts } from "./components/PwaPrompts";
 import { BrowserRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { onAuthStateChanged } from "firebase/auth";
@@ -37,6 +39,8 @@ createRoot(document.getElementById("root")!).render(
       <MotionConfig reducedMotion="user">
         <BrowserRouter basename={import.meta.env.BASE_URL}>
           <Bootstrap />
+          <Toaster />
+          <PwaPrompts />
         </BrowserRouter>
       </MotionConfig>
     </QueryClientProvider>

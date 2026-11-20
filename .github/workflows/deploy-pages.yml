@@ -30,11 +30,12 @@ jobs:
       - name: Build
         run: npm run build
         env:
-          # Served from https://<user>.github.io/<repo>/
-          VITE_BASE_PATH: /${{ github.event.repository.name }}/
+          # Served from the custom domain root (https://suregad.in/). Set the VITE_BASE_PATH
+          # repository variable to /<repo>/ only if you go back to the github.io address.
+          VITE_BASE_PATH: ${{ vars.VITE_BASE_PATH || '/' }}
           # Override any of these under Settings → Secrets and variables → Actions → Variables.
           # They end up in public JavaScript, so never put server secrets here.
-          VITE_API_URL: ${{ vars.VITE_API_URL || 'https://suregad-backend.onrender.com' }}
+          VITE_API_URL: ${{ vars.VITE_API_URL || 'https://suregad-backend-1b10e3df.appliedintelligencecorporation.com' }}
           VITE_FIREBASE_API_KEY: ${{ vars.VITE_FIREBASE_API_KEY }}
           VITE_FIREBASE_AUTH_DOMAIN: ${{ vars.VITE_FIREBASE_AUTH_DOMAIN }}
           VITE_FIREBASE_PROJECT_ID: ${{ vars.VITE_FIREBASE_PROJECT_ID }}
@@ -48,6 +49,7 @@ jobs:
       - name: SPA fallback
         run: |
           cp dist/index.html dist/404.html
+          echo "suregad.in" > dist/CNAME
           touch dist/.nojekyll
 
       - uses: actions/configure-pages@v5

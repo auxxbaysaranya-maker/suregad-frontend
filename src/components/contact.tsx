@@ -1,3 +1,4 @@
+import { toast } from "./Toaster";
 import { useState } from "react";
 import { useLocation as useRouterLocation, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -67,7 +68,7 @@ export function CallDialog({ open, onOpenChange, productId, sellerName }: { open
             </a>
             <button
               type="button"
-              onClick={() => void navigator.clipboard?.writeText(contact.data!.phone!).then(() => setCopied(true))}
+              onClick={() => void navigator.clipboard?.writeText(contact.data!.phone!).then(() => { setCopied(true); toast.success("Number copied"); })}
               className="flex items-center justify-center gap-2 rounded-full bg-white py-3.5 text-[15px] font-semibold text-ink ring-1 ring-line hover:ring-brand-300"
             >
               {copied ? <Check size={17} /> : <Copy size={17} />} {copied ? "Copied" : "Copy"}
