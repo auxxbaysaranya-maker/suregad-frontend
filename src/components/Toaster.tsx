@@ -164,11 +164,11 @@ function ToastCard({ item }: { item: Toast }) {
   );
 }
 
-/** Mount once near the root. Bottom of the screen on phones (thumb reach), top-right on desktop. */
+/** Mount once near the root. Above the bottom tab bar on phones, top-right on desktop. */
 export function Toaster() {
   const toasts = useToasts((state) => state.toasts);
   return (
-    <div aria-live="polite" className="pointer-events-none fixed inset-x-0 bottom-0 z-[100] flex flex-col items-center gap-2 px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:inset-x-auto sm:top-4 sm:right-4 sm:bottom-auto sm:w-[400px] sm:px-0 sm:pb-0">
+    <div aria-live="polite" className="pointer-events-none fixed inset-x-0 bottom-0 z-[100] flex flex-col items-center gap-2 px-3 pb-[calc(5.5rem+env(safe-area-inset-bottom))] sm:inset-x-auto sm:top-4 sm:right-4 sm:bottom-auto sm:w-[400px] sm:px-0 sm:pb-0">
       {toasts.map((item) => <ToastCard key={item.id} item={item} />)}
     </div>
   );

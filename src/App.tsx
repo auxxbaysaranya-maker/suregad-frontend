@@ -6,7 +6,7 @@ import { SearchPage } from "./pages/SearchPage";
 import { CartPage, CheckoutPage, ProductPage } from "./pages/ProductPage";
 import { StorefrontPage } from "./pages/Storefront";
 import { ScrollManager } from "./components/navigation";
-import { LoginPage } from "./pages/LoginPage";
+import { AuthActionPage, ForgotPasswordPage, LoginPage, SignupPage } from "./pages/Auth";
 import { AccountHome, AddressPage, InspectionsPage, OrdersPage, StaticInfo, SupportPage, WishlistPage } from "./pages/Dashboards";
 import { InspectionReportPage } from "./pages/InspectionReport";
 import { JoinPage } from "./pages/Join";
@@ -18,8 +18,9 @@ import { adminUrl } from "./lib/config";
 
 function Guard({ children, loginTo = "/login" }: { children: React.ReactNode; loginTo?: string }) {
   const { ready, profile } = useSession();
+  const location = useLocation();
   if (!ready) return <p className="p-6 text-sm">Checking session…</p>;
-  if (!profile) return <Navigate to={loginTo} replace />;
+  if (!profile) return <Navigate to={loginTo} replace state={{ from: location.pathname + location.search }} />;
   return children;
 }
 
@@ -51,6 +52,9 @@ export function App() {
         <Route path="/cart" element={<PublicShell><CartPage /></PublicShell>} />
         <Route path="/checkout" element={<PublicShell><Guard><CheckoutPage /></Guard></PublicShell>} />
         <Route path="/login" element={<PublicShell><LoginPage /></PublicShell>} />
+        <Route path="/signup" element={<PublicShell><SignupPage /></PublicShell>} />
+        <Route path="/forgot-password" element={<PublicShell><ForgotPasswordPage /></PublicShell>} />
+        <Route path="/auth/action" element={<PublicShell><AuthActionPage /></PublicShell>} />
         <Route
           path="/how-it-works"
           element={

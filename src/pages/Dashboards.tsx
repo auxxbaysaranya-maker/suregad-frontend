@@ -5,7 +5,9 @@ import { api } from "../lib/api";
 import { money, titleCase } from "../lib/utils";
 import { Button, Card, Empty, Field, Input, TextArea } from "../components/ui";
 import { useSession } from "../store/session";
-import { enableFirebaseMessaging, firebaseConfigured } from "../lib/firebase";
+import { firebaseConfigured } from "../lib/firebase";
+import { enablePush } from "../lib/push";
+import { VerifyEmailBanner } from "./Auth";
 
 function toUint8(value: string) {
   const padding = "=".repeat((4 - (value.length % 4)) % 4);
@@ -16,8 +18,9 @@ function toUint8(value: string) {
 
 async function enableWebPush() {
   if (firebaseConfigured()) {
-    const token = await enableFirebaseMessaging();
-    await api.post("/notifications/fcm-token", { token });
+    const result = await enablePush();
+    if (result === "denied") throw new Error("Notifications are blocked. Allow them in your browser's site settings.");
+    if (result === "unsupported") throw new Error("This browser does not support notifications.");
     return;
   }
   if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
@@ -42,6 +45,7 @@ export function AccountHome() {
   const [pushMessage, setPushMessage] = useState("");
   return (
     <div className="space-y-4">
+      <VerifyEmailBanner />
       <h1 className="text-3xl">Hello{profile ? `, ${profile.displayName}` : ""}</h1>
       <Button
         variant="secondary"

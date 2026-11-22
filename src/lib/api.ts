@@ -1,11 +1,18 @@
 import axios, { type InternalAxiosRequestConfig } from "axios";
 import { API_BASE } from "./config";
 import { toast } from "../components/Toaster";
+import { currentIdToken } from "./firebase";
 
 export const api = axios.create({ baseURL: API_BASE });
 
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("sg_token");
+/**
+ * Firebase sessions send a fresh ID token on every request (Firebase refreshes it before the
+ * one-hour expiry). Development sign-ins send the stored development token.
+ */
+api.interceptors.request.use(async (config) => {
+  const firebaseToken = await currentIdToken().catch(() => null);
+  const token = firebaseToken || localStorage.getItem("sg_token");
+  if (firebaseToken) localStorage.setItem("sg_token", firebaseToken);
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
@@ -23,7 +30,8 @@ const RULES: Rule[] = [
   { method: "post", path: /\/uploads\/(sign|local)/, message: null },
   { method: "post", path: /\/notifications\/fcm-token$/, message: null },
   { method: "post", path: /\/auth\/(dev-login|password-login)$/, message: null },
-  { method: "post", path: /\/auth\/session$/, message: "Signed in" },
+  // The sign-in pages show their own welcome and error messages.
+  { method: "post", path: /\/auth\/session$/, message: null },
   { method: "post", path: /\/auth\/logout$/, message: "Signed out" },
   { method: "post", path: /\/cart\/items$/, message: "Added to cart" },
   { method: "delete", path: /\/cart\/items\//, message: "Removed from cart" },
@@ -84,7 +92,7 @@ api.interceptors.response.use(
     const method = String(error.config?.method || "get").toLowerCase();
     const rule = ruleFor(error.config);
     // Reads fail quietly (pages show their own empty/error states); actions always explain what went wrong.
-    if (method !== "get" && !(rule && rule.message === null && !/auth\//.test(String(error.config?.url)))) {
+    if (method !== "get" && !(rule && rule.message === null && !/auth\/(dev-login|password-login)/.test(String(error.config?.url)))) {
       toast.error(error.response ? "That didn't work" : "You're offline", message, { id: `api-error-${code}` });
     } else if (!error.response && method === "get") {
       toast.warning("You're offline", "Showing what's saved. We'll reconnect automatically.", { id: "api-offline" });

@@ -25,8 +25,11 @@ function Bootstrap() {
       void refresh();
       return;
     }
+    // Firebase restores the signed-in user from its own storage; the API layer sends a fresh
+    // ID token with each request. A stored development token is left alone.
     return onAuthStateChanged(client, async (user) => {
       if (user) localStorage.setItem("sg_token", await user.getIdToken());
+      else if (!localStorage.getItem("sg_token")?.startsWith("dev.")) localStorage.removeItem("sg_token");
       await refresh();
     });
   }, [refresh]);

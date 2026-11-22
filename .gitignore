@@ -9,3 +9,9 @@ dev-dist/
 .env
 .env.local
 .env.*.local
+
+# Generated at build time by vite.config.ts
+public/firebase-messaging-sw.js
+# Never commit Firebase Admin keys
+*firebase-adminsdk*.json
+firebase-service-account.json
