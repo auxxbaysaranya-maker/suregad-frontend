@@ -2,7 +2,7 @@ import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import { useLocation as useRouterLocation } from "react-router-dom";
 import { Check, ChevronDown, Crosshair, Hand, Loader2, MapPin, Navigation, Search, X } from "lucide-react";
 import { CITIES } from "../lib/cities";
-import { AutocompleteSession, cityPlace, formatCoordinates, placeNamesAvailable, resolveSuggestion, searchPlaces, type Place, type Suggestion } from "../lib/geocode";
+import { cityPlace, formatCoordinates, placeNamesAvailable, resolveSuggestion, searchPlaces, type Place, type Suggestion } from "../lib/geocode";
 import { RADIUS_OPTIONS, useLocation } from "../store/location";
 import { cn } from "../lib/utils";
 import { Modal } from "./Modal";
@@ -14,7 +14,7 @@ export function LocationChip({ className, compact = false }: { className?: strin
   const radiusKm = useLocation((state) => state.radiusKm);
   const openPicker = useLocation((state) => state.openPicker);
   const locating = useLocation((state) => state.locating);
-  // The short Google name (e.g. "Edappally, Kochi"), or "Near Thrissur" when only the nearest city is known.
+  // The short place name (e.g. "Edappally, Ernakulam"), or "Near Thrissur" when only the nearest city is known.
   const name = location ? location.label || location.city : "";
   return (
     <button
@@ -43,18 +43,17 @@ function formatMeters(meters?: number) {
 }
 
 /**
- * Google-powered place search (through the SureGad API). Live suggestions for cities, towns,
+ * Free OpenStreetMap place search (Photon). Live suggestions for districts, cities, towns, panchayats,
  * villages, localities, streets and addresses in India, with keyboard navigation.
  */
 export function PlaceSearch({ onPick, near, autoFocus }: { onPick: (place: Place) => void; near: { lat: number; lng: number } | null; autoFocus?: boolean }) {
   const [text, setText] = useState("");
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
-  const [source, setSource] = useState<"google" | "cities">("google");
+  const [source, setSource] = useState<"osm" | "cities">("osm");
   const [notice, setNotice] = useState("");
   const [state, setState] = useState<"idle" | "loading" | "done" | "error">("idle");
   const [active, setActive] = useState(-1);
   const [resolving, setResolving] = useState<string | null>(null);
-  const session = useRef(new AutocompleteSession());
   const controller = useRef<AbortController | null>(null);
   const listId = useId();
   const nearRef = useRef(near);
@@ -74,7 +73,7 @@ export function PlaceSearch({ onPick, near, autoFocus }: { onPick: (place: Place
       const current = new AbortController();
       controller.current = current;
       setState("loading");
-      searchPlaces(query, session.current, nearRef.current, current.signal)
+      searchPlaces(query, nearRef.current, current.signal)
         .then((result) => {
           if (current.signal.aborted) return;
           setSuggestions(result.suggestions);
@@ -95,7 +94,7 @@ export function PlaceSearch({ onPick, near, autoFocus }: { onPick: (place: Place
   async function choose(suggestion: Suggestion) {
     setResolving(suggestion.placeId);
     try {
-      const place = await resolveSuggestion(suggestion, session.current);
+      const place = await resolveSuggestion(suggestion);
       setText("");
       setSuggestions([]);
       setState("idle");
@@ -174,7 +173,10 @@ export function PlaceSearch({ onPick, near, autoFocus }: { onPick: (place: Place
                     {resolving === suggestion.placeId ? <Loader2 size={15} className="animate-spin" /> : <MapPin size={15} />}
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[14px] font-semibold text-ink">{suggestion.primaryText}</span>
+                    <span className="flex min-w-0 items-center gap-2">
+                      <span className="truncate text-[14px] font-semibold text-ink">{suggestion.primaryText}</span>
+                      <span className="shrink-0 rounded-full bg-canvas px-1.5 py-0.5 text-[10px] font-semibold text-muted ring-1 ring-line">{suggestion.kind}</span>
+                    </span>
                     {suggestion.secondaryText ? <span className="block truncate text-[12px] text-muted">{suggestion.secondaryText}</span> : null}
                   </span>
                   {formatMeters(suggestion.distanceMeters) ? <span className="mt-1 shrink-0 text-[11px] font-semibold text-muted">{formatMeters(suggestion.distanceMeters)}</span> : null}
@@ -182,10 +184,13 @@ export function PlaceSearch({ onPick, near, autoFocus }: { onPick: (place: Place
               </li>
             ))}
           </ul>
-          {source === "google" && suggestions.length ? (
-            // Attribution required by the Google Maps Platform terms when results are shown without a Google map.
+          {source === "osm" && suggestions.length ? (
+            // OpenStreetMap data (ODbL) must be attributed.
             <p className="border-t border-line px-4 py-2 text-right text-[11px] text-muted">
-              Powered by <span className="font-semibold"><span className="text-[#4285F4]">G</span><span className="text-[#EA4335]">o</span><span className="text-[#FBBC05]">o</span><span className="text-[#4285F4]">g</span><span className="text-[#34A853]">l</span><span className="text-[#EA4335]">e</span></span>
+              Places ©{" "}
+              <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer" className="font-semibold hover:underline">
+                OpenStreetMap contributors
+              </a>
             </p>
           ) : null}
         </div>
@@ -198,7 +203,7 @@ export function LocationPicker() {
   const { location, radiusKm, pickerOpen, openPicker, choose, setRadius, detect, locating, error, permissionStatus } = useLocation();
   const [exactNames, setExactNames] = useState<boolean | null>(null);
   useEffect(() => {
-    if (pickerOpen) void placeNamesAvailable(true).then(setExactNames);
+    if (pickerOpen) void placeNamesAvailable().then(setExactNames);
   }, [pickerOpen]);
 
   function pick(place: Place) {
@@ -238,7 +243,7 @@ export function LocationPicker() {
 
       {exactNames === false ? (
         <p className="mb-3 rounded-2xl bg-amber-50 px-3.5 py-2.5 text-[12px] leading-snug text-amber-900 ring-1 ring-amber-200">
-          Exact place names and street search are unavailable right now, so we show your GPS coordinates with the nearest major city. Distances still use your exact position.
+          Place search is unreachable right now, so we show your GPS coordinates with the nearest major city. Distances still use your exact position.
         </p>
       ) : null}
       <PlaceSearch onPick={pick} near={location} autoFocus />

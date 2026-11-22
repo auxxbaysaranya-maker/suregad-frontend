@@ -14,14 +14,14 @@ export interface UserLocation {
   lng: number;
   /** Short name shown in the header, e.g. "Edappally, Kochi". */
   label: string;
-  /** Full address from Google, e.g. "Edappally, Kochi, Kerala 682024, India". */
+  /** Full address, e.g. "Edappally, Ernakulam, Kanayannur, Ernakulam district, Kerala 682024". */
   formattedAddress: string;
   locality: string;
   city: string;
   district: string;
   state: string;
   country: string;
-  /** Google place ID when the place came from search or reverse geocoding. */
+  /** OpenStreetMap ID when the place came from search. */
   placeId: string | null;
   /** device = follows GPS; manual = chosen by the user and never moved by GPS. */
   mode: "device" | "manual";
@@ -59,7 +59,7 @@ interface LocationState {
   detect: () => Promise<boolean>;
   /** Device mode only: apply a new GPS fix if it moved meaningfully (debounced). */
   devicePosition: (point: { lat: number; lng: number; accuracyM?: number }) => void;
-  /** Re-look-up the name of an approximate device location (e.g. once Google is available). */
+  /** Re-look-up the name of an approximate device location (e.g. once place search is reachable again). */
   refreshName: () => Promise<void>;
   setPermission: (status: PermissionStatusValue) => void;
   clear: () => void;
@@ -99,7 +99,7 @@ function read(): UserLocation | null {
       mode: value.mode || (value.source === "gps" ? "device" : "manual"),
       lastUpdatedAt: value.lastUpdatedAt || value.updatedAt || Date.now(),
       accuracyM: value.accuracyM,
-      // Older saved device locations without a Google place ID were nearest-city guesses.
+      // Older saved device locations without this flag were nearest-city guesses.
       approximate: value.approximate ?? (!value.placeId && (value.mode === "device" || value.source === "gps")),
     };
   } catch {
