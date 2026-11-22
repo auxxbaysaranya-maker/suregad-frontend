@@ -34,6 +34,17 @@ export async function uploadFile(file: File, purpose: string): Promise<{ key: st
       body: prepared,
     });
   }
-  if (!response.ok) throw new Error("Upload failed. Try again.");
+  if (!response.ok) throw new Error(await uploadError(response));
   return { key: signed.key, url: signed.publicUrl };
+}
+
+/** Readable reason from Cloudinary ({ error: { message } }), the API ({ error: { message } }) or S3. */
+export async function uploadError(response: Response): Promise<string> {
+  const body = (await response.json().catch(() => null)) as { error?: { message?: string } | string } | null;
+  const reason = typeof body?.error === "string" ? body.error : body?.error?.message;
+  if (response.status === 413) return "This file is too large to upload.";
+  if (reason && /file size|too large/i.test(reason)) return "This file is too large to upload.";
+  if (reason && /invalid image|unsupported|format/i.test(reason)) return "This file type can't be uploaded. Use JPG, PNG, WebP or PDF.";
+  if (response.status === 401 || /signature|api_key|timestamp/i.test(reason || "")) return "Upload link expired. Try again.";
+  return reason ? `Upload failed: ${reason}` : "Upload failed. Check your connection and try again.";
 }
