@@ -28,6 +28,8 @@ const RULES: Rule[] = [
   { method: "post", path: /\/chat\/conversations\/[^/]+\/read$/, message: null },
   { method: "post", path: /\/chat\/conversations\/[^/]+\/messages$/, message: null },
   { method: "post", path: /\/uploads\/(sign|local)/, message: null },
+  // Location search shows its own inline states (and falls back to major cities).
+  { method: "post", path: /\/geo\//, message: null },
   { method: "post", path: /\/notifications\/fcm-token$/, message: null },
   { method: "post", path: /\/auth\/(dev-login|password-login)$/, message: null },
   // The sign-in pages show their own welcome and error messages.

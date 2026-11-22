@@ -9,6 +9,7 @@ import {
   Laptop,
   LayoutGrid,
   LockKeyhole,
+  MapPin,
   Search,
   ShieldCheck,
   ShoppingBag,
@@ -17,6 +18,7 @@ import {
   Store,
   Tag,
   UserRound,
+  Wrench,
   type LucideIcon,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -195,6 +197,8 @@ const navLinks: { to: string; label: (locale: Locale) => string; icon: LucideIco
   { to: "/search?sellerType=business", label: () => "Refurbished", icon: Store },
   { to: "/search?condition=like_new", label: () => "Like new", icon: Sparkles },
   { to: "/search?maxPrice=15000", label: () => "Under ₹15K", icon: Tag },
+  { to: "/sellers", label: () => "Sellers near you", icon: MapPin },
+  { to: "/partners", label: () => "Inspection partners", icon: Wrench },
 ];
 
 export function SiteHeader() {

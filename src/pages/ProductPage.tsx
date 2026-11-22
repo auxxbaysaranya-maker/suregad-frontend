@@ -1,4 +1,5 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useDiscovery } from "../store/location";
 import { Link, useLocation as useRouterLocation, useNavigate, useParams } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -192,12 +193,15 @@ export function ProductPage() {
   const [photosOpen, setPhotosOpen] = useState(false);
   const [cartState, setCartState] = useState<"idle" | "busy" | "done">("idle");
   const [cartError, setCartError] = useState<unknown>(null);
+  // The active location only shapes distance and "similar near you"; it is never saved on the listing.
+  const discovery = useDiscovery();
   const product = useQuery({
-    queryKey: ["product", slug],
-    queryFn: async () => (await api.get(`/products/${slug}`)).data.data as ProductPayload,
+    queryKey: ["product", slug, discovery.key],
+    queryFn: async () => (await api.get(`/products/${slug}`, { params: discovery.params || {} })).data.data as ProductPayload,
+    placeholderData: keepPreviousData,
   });
   const item = product.data?.product;
-  const distance = useDistance(item?.geo);
+  const distance = useDistance(item?.geo, item?.distanceKm);
   useEffect(() => {
     if (!item?.id) return;
     const current = JSON.parse(localStorage.getItem("sg_viewed") || "[]") as string[];
@@ -487,7 +491,7 @@ export function ProductPage() {
 
       {ownListing ? <ManagePhotos product={item} open={photosOpen} onOpenChange={setPhotosOpen} /> : null}
       <CallDialog open={callOpen} onOpenChange={setCallOpen} productId={item.id} sellerName={sellerName} />
-      <InspectionModal open={inspectOpen} onOpenChange={setInspectOpen} product={{ id: item.id, title: item.title, categorySlug: item.categorySlug, city: item.city }} />
+      <InspectionModal open={inspectOpen} onOpenChange={setInspectOpen} product={{ id: item.id, title: item.title, categorySlug: item.categorySlug, city: item.city, geo: item.geo }} />
     </div>
   );
 }

@@ -27,7 +27,7 @@ import { api } from "../lib/api";
 import { cn } from "../lib/utils";
 import { findCity } from "../lib/cities";
 import { timeAgo } from "../lib/time";
-import { ProductCard, ProductCardSkeleton, type Listing } from "../components/ProductCard";
+import { ProductCard, ProductCardSkeleton, useDistance, type Listing } from "../components/ProductCard";
 import { ListingMap } from "../components/ListingMap";
 import { BackButton } from "../components/navigation";
 import { ShareButton, WhatsAppGlyph } from "../components/share";
@@ -116,6 +116,7 @@ export function StorefrontPage({ kind }: { kind: "seller" | "store" }) {
   const [sort, setSort] = useState("newest");
   const [shown, setShown] = useState(12);
   const data = query.data;
+  const storeDistance = useDistance(data?.location || undefined);
 
   const listings = useMemo(() => {
     let rows = data?.listings || [];
@@ -148,6 +149,8 @@ export function StorefrontPage({ kind }: { kind: "seller" | "store" }) {
   }
 
   const place = [...new Set([data.city, data.district, data.state].filter(Boolean))].join(", ");
+  // Distance from the shopper's active location to the store's own registered point (not a city guess).
+  const distance = storeDistance;
   const mapPoint = data.location || (() => {
     const city = findCity(data.city);
     return city ? { lat: city.lat, lng: city.lng, exact: false } : null;
@@ -206,7 +209,7 @@ export function StorefrontPage({ kind }: { kind: "seller" | "store" }) {
               {data.tagline ? <p className="mt-1 text-[15px] text-ink-soft">{data.tagline}</p> : null}
               <p className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px] text-muted">
                 <span className="flex items-center gap-1">{isStore ? <Store size={14} /> : <UserRound size={14} />} {isStore ? "Showroom" : "Individual seller"}</span>
-                {place ? <span className="flex items-center gap-1"><MapPin size={14} /> {place}</span> : null}
+                {place ? <span className="flex items-center gap-1"><MapPin size={14} /> {place}{distance ? ` · ${distance} from you` : ""}</span> : null}
                 {data.memberSince ? <span className="flex items-center gap-1"><CalendarDays size={14} /> On SureGad since {new Date(data.memberSince).toLocaleDateString("en-IN", { month: "short", year: "numeric" })}</span> : null}
                 {data.stats.rating !== null ? (
                   <span className="flex items-center gap-1.5"><Stars value={data.stats.rating} size={13} /> <span className="font-semibold text-ink">{data.stats.rating}</span> ({data.stats.reviewCount})</span>

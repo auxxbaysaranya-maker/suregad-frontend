@@ -32,6 +32,9 @@ export interface Listing {
   categorySlug?: string;
   featured?: boolean;
   geo?: { lat: number; lng: number };
+  /** Exact distance from the active location, computed by the server from the listing's own point. */
+  distanceKm?: number;
+  itemType?: "new" | "used" | "refurbished";
   createdAt?: string;
 }
 
@@ -66,10 +69,15 @@ export function specChips(product: Pick<Listing, "specs" | "categorySlug">): str
   return chips.slice(0, 3);
 }
 
-/** "3.2 km" from the shopper's chosen location, when both points are known. */
-export function useDistance(geo?: { lat: number; lng: number }) {
+/**
+ * "3.2 km" from the active discovery location. Prefers the server's exact figure; otherwise
+ * estimates from the listing's rounded public area.
+ */
+export function useDistance(geo?: { lat: number; lng: number }, serverKm?: number) {
   const location = useLocation((state) => state.location);
-  if (!geo || !location) return null;
+  if (!location) return null;
+  if (typeof serverKm === "number") return formatDistance(serverKm);
+  if (!geo) return null;
   return formatDistance(distanceKm(location, geo));
 }
 
@@ -96,7 +104,7 @@ export function ProductCard({ product, className }: { product: Listing; classNam
   const queryClient = useQueryClient();
   const profile = useSession((state) => state.profile);
   const chat = useStartChat();
-  const distance = useDistance(product.geo);
+  const distance = useDistance(product.geo, product.distanceKm);
   const [saved, setSaved] = useState(false);
   const [compared, setCompared] = useState(false);
   const [cart, setCart] = useState<"idle" | "busy" | "done">("idle");

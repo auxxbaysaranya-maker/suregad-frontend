@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
@@ -6,25 +6,40 @@ import { MapPin, SlidersHorizontal, X } from "lucide-react";
 import { api } from "../lib/api";
 import { ProductCard, ProductCardSkeleton, type Listing } from "../components/ProductCard";
 import { Empty, Input } from "../components/ui";
-import { useLocation } from "../store/location";
+import { RADIUS_OPTIONS, useDiscovery, useLocation } from "../store/location";
 import { cn } from "../lib/utils";
-
-const RADII = [10, 25, 50, 100, 250];
 
 export function SearchPage() {
   const [params, setParams] = useSearchParams();
   const query = Object.fromEntries(params.entries());
-  const location = useLocation((state) => state.location);
   const openPicker = useLocation((state) => state.openPicker);
-  // Like OLX, results default to the chosen location. "nearby=0" searches everywhere.
-  const nearby = Boolean(location) && query.nearby !== "0" && !query.city;
-  const radiusKm = Number(query.radiusKm) || 50;
-  const apiParams = { ...query, limit: 12, ...(nearby && location ? { lat: location.lat, lng: location.lng, radiusKm } : {}) };
-  delete (apiParams as Record<string, unknown>).nearby;
+  const setRadius = useLocation((state) => state.setRadius);
+  // The one global discovery location. "nearby=0" searches everywhere; a typed city overrides it.
+  const discovery = useDiscovery();
+  const location = discovery.location;
+  const radiusKm = discovery.radiusKm;
+  const nearby = Boolean(discovery.params) && query.nearby !== "0" && !query.city;
+  const { nearby: _nearby, radiusKm: _legacyRadius, ...filtersOnly } = query;
+  void _nearby;
+  void _legacyRadius;
+  const sort = query.sort || (nearby ? "distance" : "recommended");
+  const apiParams = { ...filtersOnly, sort: sort === "distance" && !nearby ? "recommended" : sort, limit: 12, ...(nearby && discovery.params ? discovery.params : {}) };
   const results = useQuery({
     queryKey: ["search", apiParams],
     queryFn: async () => (await api.get("/products", { params: apiParams })).data as { data: Listing[]; meta?: { total?: number; page?: number; hasMore?: boolean } },
+    placeholderData: keepPreviousData,
   });
+  // A new place or distance starts again from page 1 (keyword and category filters stay).
+  const [lastKey, setLastKey] = useState(discovery.key);
+  useEffect(() => {
+    if (discovery.key === lastKey) return;
+    setLastKey(discovery.key);
+    if (params.has("page")) {
+      const next = new URLSearchParams(params);
+      next.delete("page");
+      setParams(next, { replace: true });
+    }
+  }, [discovery.key, lastKey, params, setParams]);
   function set(key: string, value: string) {
     const next = new URLSearchParams(params);
     if (value) next.set(key, value);
@@ -53,12 +68,12 @@ export function SearchPage() {
       {location ? (
         <div className="rounded-2xl bg-brand-50 p-3 ring-1 ring-brand-100">
           <label className="flex items-center justify-between gap-2 text-[13px] font-semibold text-brand-800">
-            <span className="flex items-center gap-1.5"><MapPin size={14} /> Near {location.city}</span>
+            <span className="flex min-w-0 items-center gap-1.5"><MapPin size={14} className="shrink-0" /> <span className="truncate">Near {location.city || location.label}</span></span>
             <input type="checkbox" checked={nearby} onChange={(event) => set("nearby", event.target.checked ? "" : "0")} className="h-4 w-4 accent-[#3a3fe0]" />
           </label>
           {nearby ? (
-            <select className={cn(field, "mt-2 bg-white")} value={radiusKm} onChange={(event) => set("radiusKm", event.target.value)} aria-label="Distance">
-              {RADII.map((radius) => <option key={radius} value={radius}>Within {radius} km</option>)}
+            <select className={cn(field, "mt-2 bg-white")} value={radiusKm} onChange={(event) => setRadius(Number(event.target.value))} aria-label="Distance">
+              {RADIUS_OPTIONS.map((radius) => <option key={radius} value={radius}>Within {radius} km</option>)}
             </select>
           ) : null}
         </div>
@@ -70,7 +85,8 @@ export function SearchPage() {
         <option value="smartphones">Smartphones</option>
         <option value="laptops">Laptops</option>
       </select>
-      <select className={field} value={query.sort || "recommended"} onChange={(event) => set("sort", event.target.value)} aria-label="Sort">
+      <select className={field} value={sort} onChange={(event) => set("sort", event.target.value)} aria-label="Sort">
+        {nearby ? <option value="distance">Nearest first</option> : null}
         <option value="recommended">Recommended</option>
         <option value="newest">Recently added</option>
         <option value="price_asc">Price: low to high</option>
@@ -106,7 +122,7 @@ export function SearchPage() {
           </h1>
           {nearby && location ? (
             <button type="button" onClick={() => set("nearby", "0")} className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-brand-50 py-1.5 pr-2 pl-3 text-[13px] font-semibold text-brand-800 ring-1 ring-brand-100 hover:bg-brand-100">
-              <MapPin size={13} /> Within {radiusKm} km of {location.city}
+              <MapPin size={13} /> Within {radiusKm} km of {location.city || location.label}
               <span className="grid h-5 w-5 place-items-center rounded-full bg-white" aria-label="Search everywhere"><X size={12} /></span>
             </button>
           ) : null}
@@ -124,8 +140,13 @@ export function SearchPage() {
           {results.isError ? <Empty title="Search failed" body="The catalogue could not be loaded." /> : null}
           {!results.isLoading && !items.length ? (
             <div className="space-y-3">
-              <Empty title="No devices match" body={nearby ? `Nothing within ${radiusKm} km of ${location?.city} yet. Try a wider distance or search everywhere.` : "Try another city, brand or price. New listings appear after moderation."} />
-              {nearby ? <div className="text-center"><button type="button" onClick={() => set("nearby", "0")} className="rounded-full bg-brand-gradient px-5 py-2.5 text-[14px] font-semibold text-white shadow-glow">Search everywhere</button></div> : null}
+              <Empty title="No devices match" body={nearby ? `Nothing within ${radiusKm} km of ${location?.city || location?.label} yet. Try a wider distance or search everywhere.` : "Try another city, brand or price. New listings appear after moderation."} />
+              {nearby ? (
+                <div className="flex flex-wrap justify-center gap-2">
+                  {RADIUS_OPTIONS.find((option) => option > radiusKm) ? <button type="button" onClick={() => setRadius(RADIUS_OPTIONS.find((option) => option > radiusKm)!)} className="rounded-full bg-white px-5 py-2.5 text-[14px] font-semibold ring-1 ring-line hover:ring-brand-300">Search within {RADIUS_OPTIONS.find((option) => option > radiusKm)} km</button> : null}
+                  <button type="button" onClick={() => set("nearby", "0")} className="rounded-full bg-brand-gradient px-5 py-2.5 text-[14px] font-semibold text-white shadow-glow">Search everywhere</button>
+                </div>
+              ) : null}
             </div>
           ) : null}
           <div className="grid grid-cols-1 gap-x-5 gap-y-8 min-[460px]:grid-cols-2 md:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4">

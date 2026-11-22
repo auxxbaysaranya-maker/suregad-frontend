@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { useDiscovery } from "../store/location";
+import { NearbyBar } from "../components/NearbyBar";
 import { api } from "../lib/api";
 import { Empty } from "../components/ui";
 import { ProductRail, type Listing } from "../components/ProductCard";
@@ -33,6 +35,8 @@ interface HomeData {
   laptops: Listing[];
   inspected: Listing[];
   reviews: { rating: number; body: string; verifiedPurchase?: boolean; product?: string; author: string }[];
+  /** Which sections are near the active location (null when no location was sent). */
+  nearby: { radiusKm: number; trending: boolean; fresh: boolean; inspected: boolean; refurbished: boolean; laptops: boolean; showrooms: boolean; sellers: boolean } | null;
 }
 
 const defaultBanners: Banner[] = [
@@ -44,7 +48,13 @@ const defaultBanners: Banner[] = [
 const fallbackChecks = ["Display", "Battery", "Network", "Activation lock", "Water damage indicators"];
 
 export function HomePage() {
-  const home = useQuery({ queryKey: ["home"], queryFn: async () => (await api.get("/marketplace/home")).data.data as HomeData });
+  // Re-fetched whenever the active location or radius changes (the key carries both).
+  const discovery = useDiscovery();
+  const home = useQuery({
+    queryKey: ["home", discovery.key],
+    queryFn: async () => (await api.get("/marketplace/home", { params: discovery.params || {} })).data.data as HomeData,
+    placeholderData: keepPreviousData,
+  });
   const plans = useQuery({
     queryKey: ["inspection-plans"],
     queryFn: async () => (await api.get("/inspection-plans")).data.data as InspectionPlanSummary[],
@@ -97,6 +107,8 @@ export function HomePage() {
       <Reveal className="mt-5">
         <TrustRibbon />
       </Reveal>
+
+      <NearbyBar className="mt-5" matched={!data?.nearby || data.nearby.fresh || data.nearby.trending} />
 
       <CategoryScroller categories={data?.categories || []} />
 

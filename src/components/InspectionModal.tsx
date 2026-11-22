@@ -28,7 +28,7 @@ export function InspectionModal({
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  product: { id: string; title: string; categorySlug?: string; city?: string };
+  product: { id: string; title: string; categorySlug?: string; city?: string; geo?: { lat: number; lng: number } };
 }) {
   const navigate = useNavigate();
   const profile = useSession((state) => state.profile);
@@ -43,6 +43,20 @@ export function InspectionModal({
     staleTime: 5 * 60_000,
     queryFn: async () => (await api.get("/inspection-plans", { params: { category: product.categorySlug } })).data.data as Plan[],
   });
+  // Partners are matched to where the DEVICE is (the listing's own area), not where the shopper is.
+  const nearbyPartners = useQuery({
+    queryKey: ["partners-near-listing", product.id],
+    enabled: open && Boolean(product.geo),
+    staleTime: 5 * 60_000,
+    queryFn: async () =>
+      ((await api.get("/discovery/partners", { params: { lat: product.geo!.lat, lng: product.geo!.lng, radiusKm: 25, category: product.categorySlug, limit: 1 } })).data.meta?.total as number) ?? 0,
+  });
+  const partnerLine =
+    nearbyPartners.data === undefined
+      ? "An approved partner whose service area covers the listing is offered the job."
+      : nearbyPartners.data > 0
+        ? `${nearbyPartners.data} verified partner${nearbyPartners.data === 1 ? "" : "s"} within 25 km of this device. The nearest available one is offered the job.`
+        : "No partner is based within 25 km of this device yet; we offer the job to the nearest partners further away.";
   useEffect(() => {
     if (!open) {
       setStep("plan");
@@ -118,7 +132,7 @@ export function InspectionModal({
           </div>
           <ul className="space-y-2 text-[13px] text-ink-soft">
             {[
-              [MapPinned, "An approved partner whose service area covers the listing is offered the job."],
+              [MapPinned, partnerLine],
               [ClipboardCheck, "Critical failures stay visible on the report even if the score is high."],
               [ShieldCheck, plan.disclaimer || "The report records the device on the day of the visit. It is not a warranty."],
             ].map(([Icon, text], index) => {

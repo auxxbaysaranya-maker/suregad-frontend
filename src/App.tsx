@@ -7,6 +7,7 @@ import { CartPage, CheckoutPage, ProductPage } from "./pages/ProductPage";
 import { StorefrontPage } from "./pages/Storefront";
 import { ScrollManager } from "./components/navigation";
 import { AuthActionPage, ForgotPasswordPage, LoginPage, SignupPage } from "./pages/Auth";
+import { PartnersPage, SellersPage } from "./pages/Discover";
 import { AccountHome, AddressPage, InspectionsPage, OrdersPage, StaticInfo, SupportPage, WishlistPage } from "./pages/Dashboards";
 import { InspectionReportPage } from "./pages/InspectionReport";
 import { JoinPage } from "./pages/Join";
@@ -47,6 +48,8 @@ export function App() {
         <Route path="/product/:slug" element={<PublicShell hideTabs hideBack><ProductPage /></PublicShell>} />
         <Route path="/chat" element={<Guard><ChatPage /></Guard>} />
         <Route path="/chat/:id" element={<Guard><ChatPage /></Guard>} />
+        <Route path="/sellers" element={<PublicShell><SellersPage /></PublicShell>} />
+        <Route path="/partners" element={<PublicShell><PartnersPage /></PublicShell>} />
         <Route path="/seller/:slug" element={<PublicShell hideBack><StorefrontPage kind="seller" /></PublicShell>} />
         <Route path="/store/:slug" element={<PublicShell hideBack><StorefrontPage kind="store" /></PublicShell>} />
         <Route path="/cart" element={<PublicShell><CartPage /></PublicShell>} />
