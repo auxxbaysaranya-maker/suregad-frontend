@@ -21,6 +21,8 @@ export interface Place {
   district: string;
   state: string;
   country: string;
+  /** True when the name is only the nearest major city (Google place names unavailable). */
+  approximate?: boolean;
 }
 
 export interface Suggestion {
@@ -112,6 +114,22 @@ export async function resolveSuggestion(suggestion: Suggestion, session: Autocom
 
 const reverseCache = new Map<string, Place>();
 
+let statusPromise: Promise<boolean> | null = null;
+/** Whether the server has Google Maps configured (exact place names and live search). */
+export function placeNamesAvailable(refresh = false): Promise<boolean> {
+  if (!statusPromise || refresh) {
+    statusPromise = api
+      .get("/geo/status")
+      .then((response) => Boolean(response.data.data?.configured))
+      .catch(() => false);
+  }
+  return statusPromise;
+}
+
+export function formatCoordinates(point: { lat: number; lng: number }) {
+  return `${Math.abs(point.lat).toFixed(5)}° ${point.lat >= 0 ? "N" : "S"}, ${Math.abs(point.lng).toFixed(5)}° ${point.lng >= 0 ? "E" : "W"}`;
+}
+
 /** Readable address for a device position (Geocoding API via the server), or the nearest major city. */
 export async function reversePlace(point: { lat: number; lng: number }): Promise<Place> {
   const key = `${point.lat.toFixed(3)},${point.lng.toFixed(3)}`;
@@ -120,10 +138,19 @@ export async function reversePlace(point: { lat: number; lng: number }): Promise
   try {
     const place = (await api.get("/geo/reverse", { params: point })).data.data as Place;
     reverseCache.set(key, place);
-    return { ...place, lat: point.lat, lng: point.lng };
+    return { ...place, lat: point.lat, lng: point.lng, approximate: false };
   } catch {
+    // No exact address available: keep the real GPS coordinates and say which major city is nearest.
     const city = nearestCity(point);
-    const near = distanceKm(point, city) < 30;
-    return { ...cityPlace(city), lat: point.lat, lng: point.lng, label: near ? city.city : `Near ${city.city}`, formattedAddress: near ? `${city.city}, ${city.state}, India` : `Near ${city.city}, ${city.state}` };
+    const km = Math.round(distanceKm(point, city));
+    return {
+      ...cityPlace(city),
+      lat: point.lat,
+      lng: point.lng,
+      placeId: null,
+      label: `Near ${city.city}`,
+      formattedAddress: `${formatCoordinates(point)} · about ${km} km from ${city.city}, ${city.state}`,
+      approximate: true,
+    };
   }
 }

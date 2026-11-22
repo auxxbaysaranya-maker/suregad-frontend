@@ -2,7 +2,7 @@ import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import { useLocation as useRouterLocation } from "react-router-dom";
 import { Check, ChevronDown, Crosshair, Hand, Loader2, MapPin, Navigation, Search, X } from "lucide-react";
 import { CITIES } from "../lib/cities";
-import { AutocompleteSession, cityPlace, resolveSuggestion, searchPlaces, type Place, type Suggestion } from "../lib/geocode";
+import { AutocompleteSession, cityPlace, formatCoordinates, placeNamesAvailable, resolveSuggestion, searchPlaces, type Place, type Suggestion } from "../lib/geocode";
 import { RADIUS_OPTIONS, useLocation } from "../store/location";
 import { cn } from "../lib/utils";
 import { Modal } from "./Modal";
@@ -14,7 +14,8 @@ export function LocationChip({ className, compact = false }: { className?: strin
   const radiusKm = useLocation((state) => state.radiusKm);
   const openPicker = useLocation((state) => state.openPicker);
   const locating = useLocation((state) => state.locating);
-  const name = location ? location.city || location.label : "";
+  // The short Google name (e.g. "Edappally, Kochi"), or "Near Thrissur" when only the nearest city is known.
+  const name = location ? location.label || location.city : "";
   return (
     <button
       type="button"
@@ -195,6 +196,10 @@ export function PlaceSearch({ onPick, near, autoFocus }: { onPick: (place: Place
 
 export function LocationPicker() {
   const { location, radiusKm, pickerOpen, openPicker, choose, setRadius, detect, locating, error, permissionStatus } = useLocation();
+  const [exactNames, setExactNames] = useState<boolean | null>(null);
+  useEffect(() => {
+    if (pickerOpen) void placeNamesAvailable(true).then(setExactNames);
+  }, [pickerOpen]);
 
   function pick(place: Place) {
     choose(place);
@@ -206,7 +211,7 @@ export function LocationPicker() {
     if (await detect()) {
       openPicker(false);
       const current = useLocation.getState().location;
-      if (current) toast.success(`Using your location: ${current.label}`);
+      if (current) toast.success(`Using your location: ${current.label}`, current.approximate ? formatCoordinates(current) : current.formattedAddress);
     }
   }
 
@@ -217,12 +222,25 @@ export function LocationPicker() {
         <div className="mb-4 flex items-center gap-3 rounded-2xl bg-canvas p-3 ring-1 ring-line">
           <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white text-brand-600 ring-1 ring-line">{location.mode === "device" ? <Navigation size={17} /> : <Hand size={17} />}</span>
           <span className="min-w-0 flex-1">
-            <span className="block truncate text-[14px] font-semibold">{location.label}</span>
-            <span className="block truncate text-[12px] text-muted">{location.mode === "device" ? "Following your device location" : "Chosen by you — GPS won't change it"} · {location.formattedAddress}</span>
+            <span className="flex items-center gap-2">
+              <span className="truncate text-[14px] font-semibold">{location.label}</span>
+              {location.approximate ? <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-900">Approximate name</span> : null}
+            </span>
+            {!location.approximate && location.formattedAddress !== location.label ? <span className="block text-[12px] leading-snug text-ink-soft">{location.formattedAddress}</span> : null}
+            <span className="block text-[12px] text-muted">
+              {formatCoordinates(location)}
+              {location.mode === "device" && location.accuracyM ? ` · ±${location.accuracyM >= 1000 ? `${(location.accuracyM / 1000).toFixed(1)} km` : `${location.accuracyM} m`}` : ""}
+            </span>
+            <span className="block text-[11px] text-muted">{location.mode === "device" ? "Following your device location (GPS)" : "Chosen by you — GPS won't change it"}</span>
           </span>
         </div>
       ) : null}
 
+      {exactNames === false ? (
+        <p className="mb-3 rounded-2xl bg-amber-50 px-3.5 py-2.5 text-[12px] leading-snug text-amber-900 ring-1 ring-amber-200">
+          Exact place names and street search are unavailable right now, so we show your GPS coordinates with the nearest major city. Distances still use your exact position.
+        </p>
+      ) : null}
       <PlaceSearch onPick={pick} near={location} autoFocus />
 
       <button
@@ -280,7 +298,14 @@ export function LocationPicker() {
  */
 export function LocationBootstrap() {
   const { pathname } = useRouterLocation();
-  const { location, asked, detect, openPicker, devicePosition, setPermission } = useLocation();
+  const { location, asked, detect, openPicker, devicePosition, setPermission, refreshName } = useLocation();
+  const approximate = Boolean(location?.approximate);
+
+  // A nearest-city guess gets its real name as soon as exact names are available.
+  useEffect(() => {
+    if (!approximate) return;
+    void placeNamesAvailable().then((ok) => (ok ? refreshName() : undefined));
+  }, [approximate, refreshName]);
   const panel = /^\/(admin|partner|showroom)/.test(pathname);
   const deviceMode = location?.mode === "device";
 
@@ -316,11 +341,11 @@ export function LocationBootstrap() {
     const start = () => {
       if (watch !== null || document.visibilityState !== "visible") return;
       watch = navigator.geolocation.watchPosition(
-        (position) => devicePosition({ lat: position.coords.latitude, lng: position.coords.longitude }),
+        (position) => devicePosition({ lat: position.coords.latitude, lng: position.coords.longitude, accuracyM: position.coords.accuracy }),
         (error) => {
           if (error.code === error.PERMISSION_DENIED) setPermission("denied");
         },
-        { enableHighAccuracy: false, maximumAge: 60_000, timeout: 30_000 },
+        { enableHighAccuracy: true, maximumAge: 30_000, timeout: 30_000 },
       );
     };
     const stop = () => {

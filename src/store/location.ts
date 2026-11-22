@@ -26,6 +26,10 @@ export interface UserLocation {
   /** device = follows GPS; manual = chosen by the user and never moved by GPS. */
   mode: "device" | "manual";
   lastUpdatedAt: number;
+  /** GPS accuracy radius in metres (device mode). */
+  accuracyM?: number;
+  /** The name is only the nearest major city; refreshed once exact names are available. */
+  approximate?: boolean;
 }
 
 export type PermissionStatusValue = "granted" | "denied" | "prompt" | "unsupported" | "unknown";
@@ -54,7 +58,9 @@ interface LocationState {
   /** Ask for the device position and switch to device mode. */
   detect: () => Promise<boolean>;
   /** Device mode only: apply a new GPS fix if it moved meaningfully (debounced). */
-  devicePosition: (point: { lat: number; lng: number }) => void;
+  devicePosition: (point: { lat: number; lng: number; accuracyM?: number }) => void;
+  /** Re-look-up the name of an approximate device location (e.g. once Google is available). */
+  refreshName: () => Promise<void>;
   setPermission: (status: PermissionStatusValue) => void;
   clear: () => void;
 }
@@ -92,6 +98,9 @@ function read(): UserLocation | null {
       placeId: value.placeId || null,
       mode: value.mode || (value.source === "gps" ? "device" : "manual"),
       lastUpdatedAt: value.lastUpdatedAt || value.updatedAt || Date.now(),
+      accuracyM: value.accuracyM,
+      // Older saved device locations without a Google place ID were nearest-city guesses.
+      approximate: value.approximate ?? (!value.placeId && (value.mode === "device" || value.source === "gps")),
     };
   } catch {
     return null;
@@ -103,7 +112,7 @@ function readRadius() {
   return (RADIUS_OPTIONS as readonly number[]).includes(value) ? value : DEFAULT_RADIUS;
 }
 
-function fromPlace(place: Place, mode: UserLocation["mode"]): UserLocation {
+function fromPlace(place: Place, mode: UserLocation["mode"], accuracyM?: number): UserLocation {
   return {
     lat: place.lat,
     lng: place.lng,
@@ -117,6 +126,8 @@ function fromPlace(place: Place, mode: UserLocation["mode"]): UserLocation {
     placeId: place.placeId,
     mode,
     lastUpdatedAt: Date.now(),
+    accuracyM: mode === "device" && accuracyM ? Math.round(accuracyM) : undefined,
+    approximate: Boolean(place.approximate),
   };
 }
 
@@ -157,7 +168,7 @@ export const useLocation = create<LocationState>((set, get) => {
           async (position) => {
             const point = { lat: position.coords.latitude, lng: position.coords.longitude };
             const place = await reversePlace(point);
-            save(fromPlace(place, "device"));
+            save(fromPlace(place, "device", position.coords.accuracy));
             set({ locating: false, permissionStatus: "granted" });
             resolve(true);
           },
@@ -169,7 +180,8 @@ export const useLocation = create<LocationState>((set, get) => {
             });
             resolve(false);
           },
-          { enableHighAccuracy: false, timeout: 12_000, maximumAge: 5 * 60_000 },
+          // Fresh, GPS-grade fix: Wi-Fi/IP positions can be several kilometres off.
+          { enableHighAccuracy: true, timeout: 20_000, maximumAge: 15_000 },
         );
       }),
     devicePosition: (point) => {
@@ -186,8 +198,16 @@ export const useLocation = create<LocationState>((set, get) => {
         const place = await reversePlace(point);
         // The user may have switched to a manual place while we were looking up the address.
         if (get().location?.mode !== "device") return;
-        save(fromPlace(place, "device"));
+        save(fromPlace(place, "device", point.accuracyM));
       }, SETTLE_MS);
+    },
+    refreshName: async () => {
+      const current = get().location;
+      if (!current?.approximate) return;
+      const place = await reversePlace(current);
+      const latest = get().location;
+      if (place.approximate || !latest || latest.lat !== current.lat || latest.lng !== current.lng) return;
+      save({ ...fromPlace(place, latest.mode, latest.accuracyM), lastUpdatedAt: latest.lastUpdatedAt });
     },
   };
 });
