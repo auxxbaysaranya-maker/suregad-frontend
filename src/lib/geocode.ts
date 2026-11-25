@@ -25,6 +25,7 @@ export interface Place {
   district: string;
   state: string;
   country: string;
+  pincode?: string;
   /** True when the name is only the nearest major city (place lookup unavailable). */
   approximate?: boolean;
 }
@@ -171,6 +172,7 @@ function placeFromFeature(feature: PhotonFeature, reverse = false): Place {
     district,
     state,
     country: p.country || "India",
+    pincode: /^\d{6}$/.test(p.postcode || "") ? p.postcode : undefined,
     approximate: false,
   };
 }

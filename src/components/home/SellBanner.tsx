@@ -25,7 +25,7 @@ export function SellBanner() {
           <h2 className="mt-3 max-w-lg text-[clamp(32px,4.4vw,52px)] leading-[1.03] font-extrabold">Your old gadget deserves a new owner.</h2>
           <p className="mt-4 max-w-md text-[16px] text-white/80">Individuals list from the same account they shop with. Showrooms register their business and publish once our team approves it.</p>
           <div className="mt-8 flex flex-wrap gap-3">
-            <Link to="/become-a-seller" className="group inline-flex items-center gap-2 rounded-full bg-white px-6 py-3.5 text-[15px] font-semibold text-ink shadow-[0_14px_30px_-10px_rgba(0,0,0,0.4)] transition hover:-translate-y-0.5">
+            <Link to="/sell" className="group inline-flex items-center gap-2 rounded-full bg-white px-6 py-3.5 text-[15px] font-semibold text-ink shadow-[0_14px_30px_-10px_rgba(0,0,0,0.4)] transition hover:-translate-y-0.5">
               Start selling <ArrowRight size={17} className="transition-transform group-hover:translate-x-1" />
             </Link>
             <a href={adminUrl("signup?as=seller")} className="inline-flex items-center rounded-full px-6 py-3.5 text-[15px] font-semibold ring-1 ring-white/40 backdrop-blur transition hover:bg-white/10">

@@ -1,5 +1,6 @@
 import { ArrowRight, BadgeCheck, Briefcase, Camera, ClipboardCheck, IndianRupee, LogIn, MapPinned, MessageCircle, Store } from "lucide-react";
 import { adminUrl } from "../lib/config";
+import { Link } from "react-router-dom";
 import { Mark, OrbitRing } from "../components/brand";
 
 const CONTENT = {
@@ -75,6 +76,11 @@ export function JoinPage({ kind }: { kind: "seller" | "partner" }) {
           </div>
         ))}
       </section>
+      {kind === "seller" ? (
+        <p className="mt-6 rounded-2xl bg-white p-4 text-[14px] ring-1 ring-line">
+          Selling just your own phone or laptop? You don't need a seller account. <Link to="/sell" className="font-semibold text-brand-700">List it from your SureGad account</Link>
+        </p>
+      ) : null}
       {kind === "seller" ? (
         <p className="mt-6 flex items-center gap-2 text-[13px] text-muted"><IndianRupee size={14} /> Plans and listing limits are shown in SureGad Hub before you publish.</p>
       ) : null}

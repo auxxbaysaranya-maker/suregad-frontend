@@ -37,6 +37,7 @@ import { ShareButton } from "../components/share";
 import { ProductGallery } from "../components/ProductGallery";
 import { PhotoUploader, photosFromListing, readyKeys, type Photo } from "../components/PhotoUploader";
 import { Modal } from "../components/Modal";
+import { MarkSoldModal } from "../components/MarkSold";
 import { BackButton } from "../components/navigation";
 import { useSession } from "../store/session";
 
@@ -54,7 +55,7 @@ interface ProductPayload {
 const QUICK_QUESTIONS = ["Is it still available?", "Is the price negotiable?", "Can I see it today?", "Any repairs or scratches?"];
 
 /** Lets the seller add, remove and reorder photos on their own listing. */
-function ManagePhotos({ product, open, onOpenChange }: { product: Listing & { images?: { key?: string; url?: string }[] }; open: boolean; onOpenChange: (open: boolean) => void }) {
+export function ManagePhotos({ product, open, onOpenChange }: { product: Listing & { images?: { key?: string; url?: string }[] }; open: boolean; onOpenChange: (open: boolean) => void }) {
   const client = useQueryClient();
   const [photos, setPhotos] = useState<Photo[]>(() => photosFromListing(product.images));
   const [saving, setSaving] = useState(false);
@@ -191,6 +192,7 @@ export function ProductPage() {
   const [callOpen, setCallOpen] = useState(false);
   const [inspectOpen, setInspectOpen] = useState(false);
   const [photosOpen, setPhotosOpen] = useState(false);
+  const [soldOpen, setSoldOpen] = useState(false);
   const [cartState, setCartState] = useState<"idle" | "busy" | "done">("idle");
   const [cartError, setCartError] = useState<unknown>(null);
   // The active location only shapes distance and "similar near you"; it is never saved on the listing.
@@ -225,6 +227,7 @@ export function ProductPage() {
   if (product.isError || !product.data || !item) return <div className="mx-auto max-w-[1280px] px-4 py-10"><Empty title="Listing unavailable" body="This device is not public." /></div>;
 
   const unavailable = item.status === "sold" || item.status === "reserved";
+  const chatOnly = item.sellerType === "individual";
   const ownListing = Boolean(profile && item.sellerUserId === profile.id);
   const chips = specChips(item);
   const sellerName = product.data.business?.name || product.data.seller?.displayName || "Seller";
@@ -343,6 +346,12 @@ export function ProductPage() {
                 <button type="button" onClick={() => setPhotosOpen(true)} className="mt-3 flex w-full items-center justify-center gap-2 rounded-full bg-white py-2.5 text-[14px] font-semibold text-ink ring-1 ring-brand-200 transition hover:ring-brand-400">
                   <ImagePlus size={16} /> Manage photos ({(item.images || []).length})
                 </button>
+                {chatOnly && item.status === "active" ? (
+                  <button type="button" onClick={() => setSoldOpen(true)} className="mt-2 flex w-full items-center justify-center gap-2 rounded-full bg-ink py-2.5 text-[14px] font-semibold text-white">
+                    <Check size={16} /> Mark sold out
+                  </button>
+                ) : null}
+                {chatOnly ? <Link to="/account/listings" className="mt-3 block text-center text-[13px] font-semibold">My listings</Link> : null}
               </div>
             ) : (
               <div className="mt-6 rounded-[24px] bg-canvas p-2 ring-1 ring-line">
@@ -383,8 +392,19 @@ export function ProductPage() {
             )}
           </div>
 
-          {/* 2 · buy (highlighted) */}
-          {!ownListing ? (
+          {/* 2 · buy: showrooms sell through checkout, individuals only through chat */}
+          {!ownListing && chatOnly && !unavailable ? (
+            <div className="rounded-[30px] bg-ink p-6 text-white shadow-lift">
+              <p className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-[11px] font-semibold tracking-wide text-brand-200 ring-1 ring-white/15"><MessageCircle size={13} /> SOLD IN CHAT</p>
+              <p className="mt-3 text-[15px] font-semibold">This device is sold directly by its owner.</p>
+              <ul className="mt-3 space-y-2 text-[13px] text-white/80">
+                {["Chat and agree a price, or make an offer", "Book an inspection if you're unsure", "Meet in a public place, check the device, then pay the owner"].map((step) => (
+                  <li key={step} className="flex items-start gap-2"><Check size={15} className="mt-0.5 shrink-0 text-emerald-300" /> {step}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+          {!ownListing && !chatOnly ? (
             <div className="relative isolate overflow-hidden rounded-[30px] bg-ink p-6 text-white shadow-lift">
               <div aria-hidden="true" className="absolute -top-20 -right-16 -z-10 h-56 w-56 rounded-full bg-violet/50 blur-3xl" />
               <div aria-hidden="true" className="absolute -bottom-24 -left-16 -z-10 h-56 w-56 rounded-full bg-azure/40 blur-3xl" />
@@ -427,7 +447,7 @@ export function ProductPage() {
           ) : null}
 
           {/* 3 · inspection */}
-          <InspectionCard item={item} onRequest={() => setInspectOpen(true)} />
+          {item.inspection?.inspected || !unavailable ? <InspectionCard item={item} onRequest={() => setInspectOpen(true)} /> : null}
 
           {/* 4 · ask the seller */}
           {!ownListing ? <AskSeller productId={item.id} /> : null}
@@ -489,6 +509,7 @@ export function ProductPage() {
         </div>
       ) : null}
 
+      {ownListing && chatOnly ? <MarkSoldModal listing={item} open={soldOpen} onOpenChange={setSoldOpen} /> : null}
       {ownListing ? <ManagePhotos product={item} open={photosOpen} onOpenChange={setPhotosOpen} /> : null}
       <CallDialog open={callOpen} onOpenChange={setCallOpen} productId={item.id} sellerName={sellerName} />
       <InspectionModal open={inspectOpen} onOpenChange={setInspectOpen} product={{ id: item.id, title: item.title, categorySlug: item.categorySlug, city: item.city, geo: item.geo }} />
@@ -531,7 +552,7 @@ function PriceAlert({ productId }: { productId: string }) {
 }
 
 export function CartPage() {
-  const cart = useQuery({ queryKey: ["cart"], queryFn: async () => (await api.get("/cart")).data.data as { items: { productId: string; title: string; pricePaise: number; available: boolean; city?: string; image?: string }[] } });
+  const cart = useQuery({ queryKey: ["cart"], queryFn: async () => (await api.get("/cart")).data.data as { items: { productId: string; title: string; pricePaise: number; available: boolean; chatOnly?: boolean; city?: string; image?: string }[] } });
   const navigate = useNavigate();
   if (cart.isLoading) return <p className="mx-auto max-w-[1280px] px-4 py-8">Loading cart…</p>;
   const items = cart.data?.items || [];
@@ -545,7 +566,7 @@ export function CartPage() {
           <span className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-2xl bg-brand-50">{item.image ? <img src={item.image} alt="" className="h-[85%] w-[85%] object-contain" /> : null}</span>
           <div className="min-w-0 flex-1">
             <p className="truncate font-semibold">{item.title}</p>
-            <p className="text-sm text-muted">{item.city} · {item.available ? "Available" : "Unavailable"}</p>
+            <p className="text-sm text-muted">{item.city} · {item.available ? "Available" : item.chatOnly ? "Sold through chat. Open the listing to message the seller." : "Unavailable"}</p>
           </div>
           <div className="text-right">
             <p className="font-display text-lg font-bold">{money(item.pricePaise)}</p>

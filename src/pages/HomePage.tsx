@@ -42,7 +42,7 @@ interface HomeData {
 const defaultBanners: Banner[] = [
   { title: "Smart gadgets. Smarter prices.", body: "Compare used and refurbished phones and laptops from independent sellers and approved showrooms.", to: "/search" },
   { title: "Inspected by a partner. Reported on the listing.", body: "An inspection is published only after a partner visit. Most listings are not inspected by SureGad.", to: "/search?inspected=true" },
-  { title: "Your old gadget can find a buyer.", body: "List a phone or laptop from your account. Showrooms need approval before they publish.", to: "/become-a-seller" },
+  { title: "Your old gadget can find a buyer.", body: "List a phone or laptop from your account. Buyers reach you in chat.", to: "/sell" },
 ];
 
 const fallbackChecks = ["Display", "Battery", "Network", "Activation lock", "Water damage indicators"];

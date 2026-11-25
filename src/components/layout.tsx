@@ -37,7 +37,7 @@ const buyerTabs = [
   ["/", Home, "Home"],
   ["/search", LayoutGrid, "Browse"],
   ["/chat", MessageCircle, "Chats"],
-  ["/cart", ShoppingBag, "Cart"],
+  ["/sell", Tag, "Sell"],
   ["/account", UserRound, "Account"],
 ] as const;
 
@@ -268,7 +268,7 @@ export function SiteHeader() {
                 {link.label(locale)}
               </Link>
             ))}
-            <Link to="/become-a-seller" className="group ml-auto flex shrink-0 items-center gap-1.5 rounded-full border-gradient px-4 py-1.5 text-[13px] font-semibold text-ink transition hover:shadow-glow">
+            <Link to="/sell" className="group ml-auto flex shrink-0 items-center gap-1.5 rounded-full border-gradient px-4 py-1.5 text-[13px] font-semibold text-ink transition hover:shadow-glow">
               <span className="text-gradient">Sell your gadget</span>
               <ArrowRight size={14} className="text-violet transition-transform duration-300 group-hover:translate-x-0.5" />
             </Link>
@@ -283,7 +283,7 @@ export function SiteFooter() {
   const columns = [
     ["Shop", [["/search?category=smartphones", "Mobiles"], ["/search?category=laptops", "Laptops"], ["/search?inspected=true", "Inspected devices"], ["/search?sellerType=business", "Refurbished"]]],
     ["Help", [["/account/support", "Contact support"], ["/how-it-works", "How inspection works"], ["/account/orders", "Your orders"]]],
-    ["Sell", [["/become-a-seller", "Start selling"], [adminUrl("login"), "Seller sign in"], [adminUrl("signup?as=seller"), "Register a showroom"]]],
+    ["Sell", [["/sell", "Sell your device"], ["/account/listings", "My listings"], [adminUrl("login"), "Seller sign in"], [adminUrl("signup?as=seller"), "Register a showroom"]]],
     ["Partners", [["/become-a-partner", "Become a partner"], [adminUrl("login"), "Partner sign in"]]],
   ] as const;
   return (

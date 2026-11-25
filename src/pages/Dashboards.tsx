@@ -58,7 +58,8 @@ export function AccountHome() {
         Enable web push
       </Button>
       {pushMessage ? <p className="text-sm text-slate-600">{pushMessage}</p> : null}
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-4">
+        <Link to="/account/listings"><Card className="p-4">My listings</Card></Link>
         <Link to="/account/orders"><Card className="p-4">Orders</Card></Link>
         <Link to="/account/inspections"><Card className="p-4">Inspections</Card></Link>
         <Link to="/chat"><Card className="p-4">Chats</Card></Link>
@@ -120,14 +121,20 @@ export function WishlistPage() {
 }
 
 export function InspectionsPage() {
-  const rows = useList<{ _id: string; number: string; status: string; reportId?: string }[]>("inspections", "/me/inspections");
+  const rows = useList<{ _id: string; number: string; status: string; reportId?: string; role: "buyer" | "seller"; product: { title: string; slug: string } | null; conversationId: string | null }[]>("inspections", "/me/inspections");
   return (
     <div className="space-y-3">
       <h1 className="text-3xl">Inspections</h1>
       {(rows.data || []).map((row) => (
-        <Card key={row._id} className="flex items-center justify-between p-4 text-sm">
-          <span>{row.number} · {titleCase(row.status)}</span>
-          {row.reportId ? <Link className="text-brand" to={`/account/inspections/${row.reportId}`}>View report</Link> : null}
+        <Card key={row._id} className="flex items-center justify-between gap-3 p-4 text-sm">
+          <span className="min-w-0">
+            <span className="block truncate font-semibold">{row.product?.title || row.number}</span>
+            <span className="text-muted">{row.number} · {titleCase(row.status)} · {row.role === "seller" ? "On your listing" : "Booked by you"}</span>
+          </span>
+          <span className="flex shrink-0 flex-col items-end gap-1">
+            {row.conversationId ? <Link className="font-semibold text-brand-700" to={`/chat/${row.conversationId}`}>Chat with inspector</Link> : null}
+            {row.reportId ? <Link className="font-semibold text-brand-700" to={`/account/inspections/${row.reportId}`}>View report</Link> : null}
+          </span>
         </Card>
       ))}
       {!rows.data?.length ? <Empty title="No inspections" body="Request one from a product page after the payment gateway is configured." /> : null}

@@ -34,6 +34,8 @@ export interface Listing {
   geo?: { lat: number; lng: number };
   /** Exact distance from the active location, computed by the server from the listing's own point. */
   distanceKm?: number;
+  /** Sold by an ordinary user: chat and offers only, no cart. */
+  chatOnly?: boolean;
   itemType?: "new" | "used" | "refurbished";
   createdAt?: string;
 }
@@ -261,7 +263,7 @@ export function ProductCard({ product, className }: { product: Listing; classNam
         </div>
 
         {/* Actions: 40px tap targets. Chat and Call share the width; cart is a tinted square. */}
-        <div className="mt-3 grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_2.5rem] items-center gap-2 border-t border-line pt-3">
+        <div className={cn("mt-3 grid items-center gap-2 border-t border-line pt-3", product.sellerType === "individual" && !ownListing ? "grid-cols-2" : "grid-cols-[minmax(0,1fr)_minmax(0,1fr)_2.5rem]")}>
           {ownListing ? (
             <Link to={`/product/${product.slug}`} className="col-span-3 inline-flex h-10 items-center justify-center rounded-full bg-canvas text-[13px] font-semibold text-ink ring-1 ring-line">
               Your listing
@@ -285,7 +287,7 @@ export function ProductCard({ product, className }: { product: Listing; classNam
                 <Phone size={15} strokeWidth={2.2} className="shrink-0" />
                 <span className="truncate">Call</span>
               </button>
-              <button
+              {product.sellerType !== "individual" ? <button
                 type="button"
                 disabled={unavailable}
                 onClick={() => void addToCart()}
@@ -297,7 +299,7 @@ export function ProductCard({ product, className }: { product: Listing; classNam
                 )}
               >
                 {cart === "busy" ? <Loader2 size={16} className="animate-spin" /> : cart === "done" ? <Check size={16} /> : <ShoppingBag size={16} strokeWidth={2.2} />}
-              </button>
+              </button> : null}
             </>
           )}
         </div>

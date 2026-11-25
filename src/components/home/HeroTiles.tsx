@@ -46,7 +46,7 @@ export function HeroTiles({ checks }: { checks: string[] }) {
       </Link>
 
       <Link
-        to="/become-a-seller"
+        to="/sell"
         className="group relative isolate flex min-h-[230px] flex-col justify-between overflow-hidden rounded-[28px] bg-ink p-6 text-white transition duration-300 hover:-translate-y-1 hover:shadow-lift"
       >
         <div aria-hidden="true" className="absolute -right-10 -bottom-12 -z-10 h-56 w-56 rounded-full bg-violet/60 blur-3xl transition duration-500 group-hover:bg-orchid/60" />

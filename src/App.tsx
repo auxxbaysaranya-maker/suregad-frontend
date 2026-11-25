@@ -11,6 +11,7 @@ import { PartnersPage, SellersPage } from "./pages/Discover";
 import { AccountHome, AddressPage, InspectionsPage, OrdersPage, StaticInfo, SupportPage, WishlistPage } from "./pages/Dashboards";
 import { InspectionReportPage } from "./pages/InspectionReport";
 import { JoinPage } from "./pages/Join";
+import { MyListingsPage, SellPage } from "./pages/Sell";
 import { useSession } from "./store/session";
 import { ChatPage } from "./pages/ChatPage";
 import { RealtimeBridge } from "./components/RealtimeBridge";
@@ -75,11 +76,12 @@ export function App() {
         />
         <Route path="/become-a-seller" element={<PublicShell><JoinPage kind="seller" /></PublicShell>} />
         <Route path="/become-a-partner" element={<PublicShell><JoinPage kind="partner" /></PublicShell>} />
-        <Route path="/account/*" element={<Guard><DashboardShell title="Buyer" links={accountLinks}><AccountRoutes /></DashboardShell></Guard>} />
+        <Route path="/account/*" element={<Guard><DashboardShell title="My account" links={accountLinks}><AccountRoutes /></DashboardShell></Guard>} />
         <Route path="/showroom/*" element={<ToAdminPanel />} />
         <Route path="/partner/*" element={<ToAdminPanel />} />
         <Route path="/admin/*" element={<ToAdminPanel />} />
-        <Route path="/sell/*" element={<Navigate to="/become-a-seller" replace />} />
+        <Route path="/sell" element={<PublicShell><Guard><SellPage /></Guard></PublicShell>} />
+        <Route path="/sell/*" element={<Navigate to="/sell" replace />} />
         <Route path="*" element={<PublicShell><StaticInfo title="Page not found" body={["That address is not part of SureGad."]} /></PublicShell>} />
       </Routes>
     </>
@@ -91,6 +93,7 @@ function AccountRoutes() {
     <Routes>
       <Route index element={<AccountHome />} />
       <Route path="orders" element={<OrdersPage />} />
+      <Route path="listings" element={<MyListingsPage />} />
       <Route path="wishlist" element={<WishlistPage />} />
       <Route path="messages" element={<Navigate to="/chat" replace />} />
       <Route path="inspections/:reportId" element={<InspectionReportPage />} />
@@ -103,6 +106,7 @@ function AccountRoutes() {
 
 const accountLinks = [
   { to: "/account", label: "Overview" },
+  { to: "/account/listings", label: "My listings" },
   { to: "/account/orders", label: "Orders" },
   { to: "/account/wishlist", label: "Wishlist" },
   { to: "/chat", label: "Chats" },

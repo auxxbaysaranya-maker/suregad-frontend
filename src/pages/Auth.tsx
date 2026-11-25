@@ -296,7 +296,7 @@ export function SignupPage() {
             {errors.form ? <p role="alert" className="rounded-2xl bg-red-50 px-4 py-3 text-[13px] text-danger ring-1 ring-red-100">{errors.form}</p> : null}
             <SubmitButton busy={busy}>Create account</SubmitButton>
           </form>
-          <p className="mt-5 text-center text-[12px] text-muted">Want to sell? <Link to="/become-a-seller" className="font-semibold text-brand-700">Become a seller</Link> · <Link to="/become-a-partner" className="font-semibold text-brand-700">Become a partner</Link></p>
+          <p className="mt-5 text-center text-[12px] text-muted">Any account can sell. Own a shop? <Link to="/become-a-seller" className="font-semibold text-brand-700">Register a showroom</Link> · <Link to="/become-a-partner" className="font-semibold text-brand-700">Become a partner</Link></p>
         </>
       )}
     </AuthCard>

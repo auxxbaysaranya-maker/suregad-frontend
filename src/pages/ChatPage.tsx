@@ -36,6 +36,7 @@ import { cn, money, titleCase } from "../lib/utils";
 import { useSession } from "../store/session";
 import { MobileTabs, SiteHeader } from "../components/layout";
 import { Modal } from "../components/Modal";
+import { MarkSoldModal } from "../components/MarkSold";
 import { CallDialog } from "../components/contact";
 import { DeviceFallback } from "../components/illustrations";
 import { BackButton } from "../components/navigation";
@@ -63,7 +64,7 @@ interface UserSummary {
 }
 interface ConversationItem {
   id: string;
-  role: "buying" | "selling";
+  role: "buying" | "selling" | "inspection";
   product: ProductSummary | null;
   other: UserSummary;
   lastPreview: string;
@@ -76,7 +77,7 @@ interface ConversationItem {
 }
 interface ConversationDetail {
   id: string;
-  role: "buying" | "selling";
+  role: "buying" | "selling" | "inspection";
   product: ProductSummary | null;
   other: UserSummary;
   important: boolean;
@@ -88,6 +89,7 @@ interface ConversationDetail {
 }
 
 const BUYER_REPLIES = ["Is it still available?", "Is the price negotiable?", "Can I see it today?", "Any scratches or repairs?", "Is the bill or box included?"];
+const INSPECTION_REPLIES = ["When can you visit?", "Please share your availability.", "The device is ready.", "Can we change the time?"];
 const SELLER_REPLIES = ["Yes, it's available.", "The price is slightly negotiable.", "Sorry, the price is fixed.", "You can see it today.", "Please make an offer."];
 
 function errorText(error: unknown, fallback: string) {
@@ -140,7 +142,7 @@ function offerTone(status: ChatOffer["status"]) {
 
 function Inbox({ activeId, className }: { activeId?: string; className?: string }) {
   const [params, setParams] = useSearchParams();
-  const box = (params.get("box") as "all" | "buying" | "selling") || "all";
+  const box = (params.get("box") as "all" | "buying" | "selling" | "inspection") || "all";
   const [filter, setFilter] = useState<"all" | "unread" | "important" | "offers">("all");
   const [q, setQ] = useState("");
   const list = useQuery({
@@ -169,7 +171,7 @@ function Inbox({ activeId, className }: { activeId?: string; className?: string 
           {unread.data?.count ? <span className="rounded-full bg-brand-gradient px-2.5 py-1 text-[12px] font-bold text-white">{unread.data.count} unread</span> : null}
         </div>
         <div className="flex rounded-full bg-canvas p-1 ring-1 ring-line" role="tablist">
-          {(["all", "buying", "selling"] as const).map((key) => (
+          {(["all", "buying", "selling", "inspection"] as const).map((key) => (
             <button
               key={key}
               type="button"
@@ -184,7 +186,7 @@ function Inbox({ activeId, className }: { activeId?: string; className?: string 
               className={cn("relative flex-1 rounded-full py-2 text-[13px] font-semibold transition", box === key ? "text-white" : "text-ink-soft hover:text-ink")}
             >
               {box === key ? <motion.span layoutId="chat-box" className="absolute inset-0 rounded-full bg-ink" transition={{ type: "spring", stiffness: 420, damping: 34 }} /> : null}
-              <span className="relative">{titleCase(key)}</span>
+              <span className="relative">{key === "inspection" ? "Inspect" : titleCase(key)}</span>
             </button>
           ))}
         </div>
@@ -245,7 +247,7 @@ function Inbox({ activeId, className }: { activeId?: string; className?: string 
                         <span className={cn("shrink-0 text-[11px]", item.unread ? "font-semibold text-brand-600" : "text-muted")}>{inboxTime(item.lastMessageAt)}</span>
                       </span>
                       <span className="flex items-center gap-1.5 truncate text-[12px] text-muted">
-                        <span className={cn("rounded px-1 text-[10px] font-bold uppercase", item.role === "buying" ? "bg-azure/10 text-azure" : "bg-violet/10 text-violet")}>{item.role === "buying" ? "Buy" : "Sell"}</span>
+                        <span className={cn("rounded px-1 text-[10px] font-bold uppercase", item.role === "buying" ? "bg-azure/10 text-azure" : item.role === "inspection" ? "bg-emerald-50 text-emerald-700" : "bg-violet/10 text-violet")}>{item.role === "buying" ? "Buy" : item.role === "inspection" ? "Inspect" : "Sell"}</span>
                         <span className="truncate">{item.product?.title || "Listing removed"}</span>
                       </span>
                       <span className="mt-1 flex items-center gap-2">
@@ -288,7 +290,8 @@ function OfferBubble({ offer, mine, me, detail, onCounter }: { offer: ChatOffer;
   const iAmBuyer = me === offer.buyerId;
   const byBuyer = offer.createdBy === offer.buyerId;
   const label = mine ? (byBuyer ? "Your offer" : "Your counter-offer") : byBuyer ? "Buyer's offer" : "Seller's counter-offer";
-  const canBuy = offer.status === "accepted" && iAmBuyer && (!offer.expiresAt || new Date(offer.expiresAt) > new Date()) && detail.product?.available;
+  const chatOnly = detail.product?.sellerType === "individual";
+  const canBuy = !chatOnly && offer.status === "accepted" && iAmBuyer && (!offer.expiresAt || new Date(offer.expiresAt) > new Date()) && detail.product?.available;
   return (
     <div className={cn("w-[270px] overflow-hidden rounded-3xl ring-1", mine ? "bg-ink text-white ring-ink" : "bg-white text-ink ring-line")}>
       <div className={cn("flex items-center gap-2 px-4 pt-3.5 text-[12px] font-semibold", mine ? "text-white/70" : "text-muted")}>
@@ -302,7 +305,7 @@ function OfferBubble({ offer, mine, me, detail, onCounter }: { offer: ChatOffer;
         <span className={cn("mt-2 inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-semibold ring-1", offerTone(offer.status))}>{offerLabel(offer)}</span>
         {offer.status === "accepted" && offer.expiresAt ? (
           <p className={cn("mt-1.5 text-[11px]", mine ? "text-white/60" : "text-muted")}>
-            Buy at this price until {new Date(offer.expiresAt).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}
+            {chatOnly ? "Price held until" : "Buy at this price until"} {new Date(offer.expiresAt).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}
           </p>
         ) : null}
       </div>
@@ -372,7 +375,7 @@ function ReportDialog({ open, onOpenChange, conversationId }: { open: boolean; o
         </div>
       ) : (
         <div className="space-y-3">
-          {["Spam or scam", "Asked to pay outside SureGad", "Offensive messages", "Fake or misleading listing", "Something else"].map((option) => (
+          {["Spam or scam", "Asked to pay before seeing the device", "Offensive messages", "Fake or misleading listing", "Something else"].map((option) => (
             <label key={option} className={cn("flex cursor-pointer items-center gap-3 rounded-2xl p-3.5 ring-1 transition", reason === option ? "bg-brand-50 ring-brand-300" : "ring-line hover:ring-brand-200")}>
               <input type="radio" name="reason" checked={reason === option} onChange={() => setReason(option)} className="accent-[#3a3fe0]" />
               <span className="text-[14px] font-medium">{option}</span>
@@ -482,7 +485,7 @@ function Composer({ detail, me, mode, setMode, onSent }: { detail: ConversationD
   if (detail.blockedByMe || detail.blockedByOther) {
     return <BlockedBar detail={detail} />;
   }
-  const canOffer = Boolean(detail.product?.available);
+  const canOffer = detail.role !== "inspection" && Boolean(detail.product?.available);
   return (
     <div className="shrink-0 border-t border-line bg-white px-3 pt-2 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:px-4">
       {canOffer ? (
@@ -501,7 +504,7 @@ function Composer({ detail, me, mode, setMode, onSent }: { detail: ConversationD
       <AnimatePresence mode="wait" initial={false}>
         {mode === "offer" && canOffer ? (
           <motion.div key="offer" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }} transition={{ duration: 0.2 }} className="space-y-3 pb-1">
-            <p className="text-center text-[12px] text-muted">Listed at <span className="font-semibold text-ink">{money(list)}</span>. If the {detail.role === "selling" ? "buyer" : "seller"} accepts, the buyer can check out at this price for {detail.offerHoldHours} hours.</p>
+            <p className="text-center text-[12px] text-muted">Listed at <span className="font-semibold text-ink">{money(list)}</span>. If the {detail.role === "selling" ? "buyer" : "seller"} accepts, {detail.product?.sellerType === "individual" ? "the price is held for" : "the buyer can check out at this price for"} {detail.offerHoldHours} hours.</p>
             <div className="flex flex-wrap justify-center gap-2">
               {options.map((value) => (
                 <button key={value} type="button" onClick={() => setRupees(String(value / 100))} className={cn("rounded-full px-3.5 py-1.5 text-[13px] font-semibold ring-1 transition", amount === value ? "bg-brand-gradient text-white ring-transparent" : "bg-white text-ink ring-line hover:ring-brand-300")}>
@@ -529,7 +532,7 @@ function Composer({ detail, me, mode, setMode, onSent }: { detail: ConversationD
         ) : (
           <motion.div key="chat" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }} transition={{ duration: 0.2 }}>
             <div className="no-scrollbar -mx-3 mb-2 flex gap-2 overflow-x-auto px-3 sm:-mx-4 sm:px-4">
-              {(detail.role === "buying" ? BUYER_REPLIES : SELLER_REPLIES).map((reply) => (
+              {(detail.role === "inspection" ? INSPECTION_REPLIES : detail.role === "buying" ? BUYER_REPLIES : SELLER_REPLIES).map((reply) => (
                 <button key={reply} type="button" onClick={() => void sendText(reply)} className="shrink-0 rounded-full bg-brand-50 px-3.5 py-1.5 text-[13px] font-medium text-brand-800 ring-1 ring-brand-100 transition hover:bg-brand-100">
                   {reply}
                 </button>
@@ -645,6 +648,7 @@ function Thread({ id }: { id: string }) {
   const [safetyOpen, setSafetyOpen] = useState(true);
   const [callOpen, setCallOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
+  const [soldOpen, setSoldOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const scroller = useRef<HTMLDivElement>(null);
   const stickToBottom = useRef(true);
@@ -730,6 +734,7 @@ function Thread({ id }: { id: string }) {
 
   const product = data?.product;
   const offer = data?.offer;
+  const chatOnly = product?.sellerType === "individual";
   const acceptedForMe = offer && offer.status === "accepted" && offer.buyerId === me && (!offer.expiresAt || new Date(offer.expiresAt) > new Date()) && product?.available;
   const rows = messages.data || [];
 
@@ -782,8 +787,13 @@ function Thread({ id }: { id: string }) {
               </span>
             </span>
           </Link>
+          {data?.role === "selling" && chatOnly && product.available ? (
+            <button type="button" onClick={() => setSoldOpen(true)} className="shrink-0 rounded-full bg-ink px-3.5 py-2 text-[13px] font-semibold text-white">Mark sold</button>
+          ) : null}
           {data?.role === "buying" && product.available ? (
-            acceptedForMe ? (
+            chatOnly ? (
+              <button type="button" onClick={() => setMode("offer")} className="shrink-0 rounded-full bg-ink px-3.5 py-2 text-[13px] font-semibold text-white">Make offer</button>
+            ) : acceptedForMe ? (
               <button type="button" onClick={() => navigate("/checkout", { state: { productIds: [product.id], offerId: offer!.id } })} className="flex shrink-0 items-center gap-1.5 rounded-full bg-brand-gradient px-4 py-2.5 text-[13px] font-semibold text-white shadow-glow">
                 <ShoppingBag size={15} /> Buy now
               </button>
@@ -811,7 +821,7 @@ function Thread({ id }: { id: string }) {
             <motion.div exit={{ opacity: 0, height: 0, marginBottom: 0 }} className="mx-auto mb-4 flex max-w-md items-start gap-3 rounded-2xl bg-white p-3.5 text-[12px] leading-5 text-ink-soft shadow-card ring-1 ring-line">
               <ShieldCheck size={18} className="mt-0.5 shrink-0 text-success" />
               <p className="flex-1">
-                <span className="font-semibold text-ink">Stay safe.</span> Meet in a public place, check the device before you pay, and never send money outside SureGad. Unsure? Book an inspection from the listing.
+                <span className="font-semibold text-ink">Stay safe.</span> {chatOnly ? "Meet in a public place, check the device, and pay the owner only when it's in your hands. Never send an advance." : "Meet in a public place, check the device before you pay, and never send money outside SureGad."} Unsure? Book an inspection from the listing.
               </p>
               <button type="button" onClick={() => setSafetyOpen(false)} aria-label="Dismiss" className="shrink-0 text-muted hover:text-ink"><X size={15} /></button>
             </motion.div>
@@ -907,6 +917,9 @@ function Thread({ id }: { id: string }) {
       ) : null}
 
       {product ? <CallDialog open={callOpen} onOpenChange={setCallOpen} productId={product.id} sellerName={other?.name} /> : null}
+      {product && chatOnly && data?.role === "selling" ? (
+        <MarkSoldModal listing={product} open={soldOpen} onOpenChange={setSoldOpen} conversation={{ id, buyerName: other?.name || "this buyer", agreedPaise: offer?.status === "accepted" ? offer.amountPaise : undefined }} />
+      ) : null}
       <ReportDialog open={reportOpen} onOpenChange={setReportOpen} conversationId={id} />
       <Modal open={deleteOpen} onOpenChange={setDeleteOpen} title="Delete this chat?" description="It's removed from your inbox only. If they message again, it comes back." size="sm">
         <div className="grid grid-cols-2 gap-2">
